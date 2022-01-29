@@ -1,4 +1,4 @@
-//package frc.robot;
+package frc.robot.modules.vision.java;
 
 import java.util.ArrayList;
 
@@ -38,35 +38,22 @@ public class VisionServer {
 	public static VisionServer Get() { return VisionServer.global; }
 	private static final VisionServer global = new VisionServer();
 
-	public boolean areCamerasUpdated() { return (int)this.num_cams.getDouble() == this.vscameras.size(); }
-	public boolean arePipelinesUpdated() { return (int)this.num_pipes.getDouble() == this.vspipelines.size(); }
-
 	public void updateCameras() {
 		this.vscameras.clear();
 		for(String subtable : cameras.getSubTables()) {
-			this.vscameras.add(new VsCamera(subtable));
+			this.vscameras.add(new VsCamera(cameras.getSubTable(subtable)));
 		}
 	}
 	public void updatePipelines() {
 		this.vspipelines.clear();
 		for(String subtable : pipelines.getSubTables()) {
-			this.vspipelines.add(new VsPipeline(subtable));
+			this.vspipelines.add(new VsPipeline(pipelines.getSubTable(subtable)));
 		}
 	}
-	public ArrayList<VsCamera> getCameras() { 
-		if(!this.areCamerasUpdated()) { this.updateCameras(); }
-		return this.vscameras; 
-	}
-	public ArrayList<VsPipeline> getPipelines() { 
-		if(!this.arePipelinesUpdated()) { this.updatePipelines(); }
-		return this.vspipelines; 
-	}
-	public VsCamera getCamera(int idx) { 
-		if(!this.areCamerasUpdated()) { this.updateCameras(); }
-		return idx < this.vscameras.size() ? idx > 0 ? this.vscameras.get(idx) : null : null; 
-	}
+	public ArrayList<VsCamera> getCameras() { return this.vscameras; }
+	public ArrayList<VsPipeline> getPipelines() { return this.vspipelines; }
+	public VsCamera getCamera(int idx) { return idx < this.vscameras.size() ? idx > 0 ? this.vscameras.get(idx) : null : null; }
 	public VsCamera getCamera(String name) {
-		if(!this.areCamerasUpdated()) { this.updateCameras(); }
 		for(int i = 0; i < this.vscameras.size(); i++) {
 			if(this.vscameras.get(i).name.equals(name)) {
 				return this.vscameras.get(i);
@@ -74,12 +61,8 @@ public class VisionServer {
 		}
 		return null;
 	}
-	public VsPipeline getPipeline(int idx) { 
-		if(!this.arePipelinesUpdated()) { this.updatePipelines(); }
-		return idx < this.vspipelines.size() ? idx > 0 ? this.vspipelines.get(idx) : null : null; 
-	}
+	public VsPipeline getPipeline(int idx) { return idx < this.vspipelines.size() ? idx > 0 ? this.vspipelines.get(idx) : null : null; }
 	public VsPipeline getPipeline(String name) {
-		if(!this.arePipelinesUpdated()) { this.updatePipelines(); }
 		for(int i = 0; i < this.vspipelines.size(); i++) {
 			if(this.vspipelines.get(i).name.equals(name)) {
 				return this.vspipelines.get(i);
@@ -87,14 +70,8 @@ public class VisionServer {
 		}
 		return null;
 	}
-	public VsCamera getCurrentCamera() { 
-		if(!this.areCamerasUpdated()) { this.updateCameras(); }
-		return this.getCamera(root.getEntry("Camera Name").getString()); 
-	}
-	public VsPipeline getCurrentPipeline() { 
-		if(!this.arePipelinesUpdated()) { this.updatePipelines(); }
-		return this.getPipeline(this.getPipelineIdx()); 
-	}
+	public VsCamera getCurrentCamera() { return this.getCamera(this.getCameraIdx()); }
+	public VsPipeline getCurrentPipeline() { return this.getPipeline(this.getPipelineIdx()); }
 
 	public boolean getIsShowingStatistics() { return root.getEntry("Show Statistics").getBoolean(false); }
 	public void setStatistics(boolean val) { root.getEntry("Show Statistics").setBoolean(val); }
@@ -189,11 +166,11 @@ public class VisionServer {
 			this.name = NetworkTable.basenameKey(nt.getPath());
 		}
 		public void update(String tname) {
-			this.self = VisionServer.Get().cameras.getSubTable(name);
+			this.self = VisionServer.Get().cameras.getSubTable(tname);
 			this.name = tname;
 		}
 		public VsCamera(NetworkTable nt) { this.update(nt); }
-		public VsCamera(String name) { this.update(name); }
+		public VsCamera(String tname) { this.update(tname); }
 
 		public String getName() { return this.name; }
 		public NetworkTable get() { return this.self; }
