@@ -1,6 +1,7 @@
 package frc.robot.modules.vision.java;
 
 import java.util.ArrayList;
+import java.util.Set;
 
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.NetworkTableEntry;
@@ -42,14 +43,20 @@ public class VisionServer {
 	public boolean arePipelinesUpdated() { return this.vspipelines.size() == (int)this.num_pipes.getDouble(0.0); }
 	public void updateCameras() {
 		this.vscameras.clear();
-		for(String subtable : cameras.getSubTables()) {
-			this.vscameras.add(new VsCamera(cameras.getSubTable(subtable)));
+		int i  = 0;
+		for(String subtable : this.cameras.getSubTables()) {
+			this.vscameras.add(new VsCamera(this.cameras.getSubTable(subtable)));
+			this.vscameras.get(i).idx = i;
+			i++;
 		}
 	}
 	public void updatePipelines() {
 		this.vspipelines.clear();
-		for(String subtable : pipelines.getSubTables()) {
-			this.vspipelines.add(new VsPipeline(pipelines.getSubTable(subtable)));
+		int i = 0;
+		for(String subtable : this.pipelines.getSubTables()) {
+			this.vspipelines.add(new VsPipeline(this.pipelines.getSubTable(subtable)));
+			this.vspipelines.get(i).idx = i;
+			i++;
 		}
 	}
 	public ArrayList<VsCamera> getCameras() { 
@@ -81,6 +88,17 @@ public class VisionServer {
 		}
 		return null;
 	}
+	public int findCameraIdx(String name) {
+		if(!this.areCamerasUpdated()) {
+			this.updateCameras();
+		}
+		for(int i = 0; i < this.vscameras.size(); i++) {
+			if(this.vscameras.get(i).name.equals(name)) {
+				return i;
+			}
+		}
+		return -1;
+	}
 	public VsPipeline getPipeline(int idx) { 
 		if(!this.arePipelinesUpdated()) {
 			this.updatePipelines();
@@ -88,12 +106,26 @@ public class VisionServer {
 		return idx < this.vspipelines.size() ? idx > 0 ? this.vspipelines.get(idx) : null : null; 
 	}
 	public VsPipeline getPipeline(String name) {
+		if(!this.arePipelinesUpdated()) {
+			this.updatePipelines();
+		}
 		for(int i = 0; i < this.vspipelines.size(); i++) {
 			if(this.vspipelines.get(i).name.equals(name)) {
 				return this.vspipelines.get(i);
 			}
 		}
 		return null;
+	}
+	public int findPipelineIdx(String name) {	// returns -1 on failure
+		if(!this.arePipelinesUpdated()) {
+			this.updatePipelines();
+		}
+		for(int i = 0; i < this.vspipelines.size(); i++) {
+			if(this.vspipelines.get(i).name.equals(name)) {
+				return i;
+			}
+		}
+		return -1;
 	}
 	public VsCamera getCurrentCamera() { 
 		if(!this.areCamerasUpdated()) {
@@ -131,20 +163,38 @@ public class VisionServer {
 		return false;
 	}
 
-	public boolean hasActiveTarget() { return !active_target.getString("none").equals("none"); }
-	public NetworkTable getActiveTarget() { return targets.getSubTable(active_target.getString("none")); }
-	public String getActiveTargetName() { return active_target.getString("none"); }
+	public boolean hasActiveTarget() { return !active_target.getString("none").equals("none"); }	// returns "none" on error
+	public NetworkTable getActiveTarget() { return targets.getSubTable(active_target.getString("none")); }	// returns "none" on error
+	public String getActiveTargetName() { return active_target.getString("none"); }	// returns "none" on error
 	public double getDistance() { return this.getActiveTarget().getEntry("distance").getDouble(0.0); }
 	public double getThetaUD() { return this.getActiveTarget().getEntry("up-down").getDouble(0.0); }
 	public double getThetaLR() { return this.getActiveTarget().getEntry("left-right").getDouble(0.0); }
 	public TargetOffset getTargetPos() { return new TargetOffset(this.getActiveTarget()); }
 	public TargetData getTargetData() { return new TargetData(this.getActiveTarget()); }
+	public TargetData getTargetDataIfMatching(String target) {	// returns null on mismatch
+		if(this.getActiveTargetName().equals(target)) {
+			return this.getTargetData();
+		}
+		return null;
+	}
 
 	public int numCameras() { return (int)num_cams.getDouble(0.0); }	// returns 0 on failure
 	public int getCameraIdx() { return (int)cam_idx.getDouble(-1.0); }	// returns -1 on failure
 	public boolean setCamera(int idx) {		// returns whether the input index was valid or not
 		cam_idx.setDouble(idx);
 		return idx < this.numCameras() && idx > 0;
+	}
+	public boolean setCamera(String name) {
+		int i = 0;
+		for(String c : this.cameras.getSubTables()) {
+			if(c.equals(name)) {
+				return this.setCamera(i);
+			}
+		}
+		return false;
+	}
+	public boolean setCamera(VsCamera cam) {
+		return this.setCamera(cam.name);
 	}
 	public boolean incrementCamera() {
 		int idx = this.getCameraIdx();
@@ -169,6 +219,18 @@ public class VisionServer {
 	public boolean setPipeline(int idx) {	// returns whether the input index was valid or not
 		pipe_idx.setDouble(idx);
 		return idx < this.numPipelines() && idx > 0;
+	}
+	public boolean setPipeline(String name) {
+		int i = 0;
+		for(String p : this.pipelines.getSubTables()) {
+			if(p.equals(name)) {
+				return this.setPipeline(i);
+			}
+		}
+		return false;
+	}
+	public boolean setPipeline(VsPipeline pipe) {
+		return this.setPipeline(pipe.name);
 	}
 	public boolean incrementPipeline() {
 		int idx = this.getPipelineIdx();
@@ -195,6 +257,7 @@ public class VisionServer {
 
 		private NetworkTable self;
 		private String name;
+		private int idx = -1;
 
 		public void update(NetworkTable nt) {
 			this.self = nt;
@@ -207,6 +270,7 @@ public class VisionServer {
 		public VsCamera(NetworkTable nt) { this.update(nt); }
 		public VsCamera(String tname) { this.update(tname); }
 
+		public int getIdx() { return this.idx; }
 		public String getName() { return this.name; }
 		public NetworkTable get() { return this.self; }
 
@@ -230,6 +294,7 @@ public class VisionServer {
 
 		private NetworkTable self;
 		private String name;
+		private int idx = -1;
 		NetworkTableEntry debug = null, thresh = null;
 
 		public void update(NetworkTable nt) {
@@ -247,6 +312,7 @@ public class VisionServer {
 			this.update(tname);
 		}
 
+		public int getIdx() { return this.idx; }
 		public String getName() { return this.name; }
 		public NetworkTable get() { return this.self; }
 		
@@ -348,7 +414,7 @@ public class VisionServer {
 	}
 	public static class TargetData {
 		public TargetOffset pos;
-		public double distance, ud, lr;
+		public double distance, ud, lr;	// ud -> + : up, - : down	lr -> + : right, - : left
 
 		public TargetData(double x, double y, double z, double d, double ud, double lr) {
 			this.pos = new TargetOffset(x, y, z);
@@ -390,33 +456,56 @@ public class VisionServer {
 
 	private class IncrementCamera extends CommandBase {
 		public IncrementCamera() {}
-		@Override public void initialize() { incrementCamera(); }
+		@Override public void initialize() { 
+			System.out.println("INCREMENT CAMERA");
+			incrementCamera(); 
+		}
 		@Override public boolean isFinished() { return true; }
+		@Override public boolean runsWhenDisabled() { return true; }
 	}
 	private class DecrementCamera extends CommandBase {
 		public DecrementCamera() {}
-		@Override public void initialize() { decrementCamera(); }
+		@Override public void initialize() { 
+			System.out.println("DECREMENT CAMERA");
+			decrementCamera(); 
+		}
 		@Override public boolean isFinished() { return true; }
+		@Override public boolean runsWhenDisabled() { return true; }
 	}
 	private class IncrementPipeline extends CommandBase {
 		public IncrementPipeline() {}
-		@Override public void initialize() { incrementPipeline(); }
+		@Override public void initialize() { 
+			System.out.println("INCREMENT PIPELINE");
+			incrementPipeline(); }
 		@Override public boolean isFinished() { return true; }
+		@Override public boolean runsWhenDisabled() { return true; }
 	}
 	private class DecrementPipeline extends CommandBase {
 		public DecrementPipeline() {}
-		@Override public void initialize() { decrementPipeline(); }
+		@Override public void initialize() { 
+			System.out.println("DECREMENT PIPELINE");
+			decrementPipeline(); 
+		}
 		@Override public boolean isFinished() { return true; }
+		@Override public boolean runsWhenDisabled() { return true; }
 	}
 	private class ToggleStatistics extends CommandBase {
 		public ToggleStatistics() {}
-		@Override public void initialize() { toggleStatistics(); }
+		@Override public void initialize() { 
+			System.out.println("TOGGLE STATISTICS");
+			toggleStatistics(); 
+		}
 		@Override public boolean isFinished() { return true; }
+		@Override public boolean runsWhenDisabled() { return true; }
 	}
 	private class TogglePipeline extends CommandBase {
 		public TogglePipeline() {}
-		@Override public void initialize() { togglePipelineEnabled(); }
+		@Override public void initialize() { 
+			System.out.println("TOGGLE PROCESSING");
+			togglePipelineEnabled(); 
+		}
 		@Override public boolean isFinished() { return true; }
+		@Override public boolean runsWhenDisabled() { return true; }
 	}
 // 	private static class ToggleDebug extends CommandBase {		// not implemented yet
 }
