@@ -1,10 +1,10 @@
 package frc.robot.modules.vision.java;
 
 import java.util.ArrayList;
-import java.util.Set;
 
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.NetworkTableEntry;
+import edu.wpi.first.networktables.EntryListenerFlags;
 import edu.wpi.first.networktables.NetworkTable;
 
 // comment out this import and all commandbased-related code at the bottom of the file if you are not using the command library
@@ -33,8 +33,16 @@ public class VisionServer {
 		num_pipes = root.getEntry("Pipelines Available");
 		pipe_idx = root.getEntry("Pipeline Index");
 
-		this.updateCameras();
-		this.updatePipelines();
+		cameras.addSubTableListener(
+			(parent, name, table) -> {
+				this.updateCameras();
+			}, false
+		);
+		pipelines.addSubTableListener(
+			(parent, name, table) -> {
+				this.updatePipelines();
+			}, false
+		);
 	}
 	public static VisionServer Get() { return VisionServer.global; }
 	private static final VisionServer global = new VisionServer();
@@ -42,6 +50,7 @@ public class VisionServer {
 	public boolean areCamerasUpdated() { return this.vscameras.size() == (int)this.num_cams.getDouble(0.0); }
 	public boolean arePipelinesUpdated() { return this.vspipelines.size() == (int)this.num_pipes.getDouble(0.0); }
 	public void updateCameras() {
+		System.out.println("Updated Cameras");
 		this.vscameras.clear();
 		int i  = 0;
 		for(String subtable : this.cameras.getSubTables()) {
@@ -51,6 +60,7 @@ public class VisionServer {
 		}
 	}
 	public void updatePipelines() {
+		System.out.println("Updated Pipelines");
 		this.vspipelines.clear();
 		int i = 0;
 		for(String subtable : this.pipelines.getSubTables()) {
@@ -181,8 +191,7 @@ public class VisionServer {
 	public int numCameras() { return (int)num_cams.getDouble(0.0); }	// returns 0 on failure
 	public int getCameraIdx() { return (int)cam_idx.getDouble(-1.0); }	// returns -1 on failure
 	public boolean setCamera(int idx) {		// returns whether the input index was valid or not
-		cam_idx.setDouble(idx);
-		return idx < this.numCameras() && idx > 0;
+		return idx < this.numCameras() && idx > 0 && cam_idx.setDouble(idx);
 	}
 	public boolean setCamera(String name) {
 		int i = 0;
@@ -190,6 +199,7 @@ public class VisionServer {
 			if(c.equals(name)) {
 				return this.setCamera(i);
 			}
+			i++;
 		}
 		return false;
 	}
@@ -217,8 +227,7 @@ public class VisionServer {
 	public int numPipelines() { return (int)num_pipes.getDouble(0.0); }		// returns 0 on failure
 	public int getPipelineIdx() { return (int)pipe_idx.getDouble(-1.0); }	// returns -1 on failure
 	public boolean setPipeline(int idx) {	// returns whether the input index was valid or not
-		pipe_idx.setDouble(idx);
-		return idx < this.numPipelines() && idx > 0;
+		return idx < this.numPipelines() && idx > 0 && pipe_idx.setDouble(idx);
 	}
 	public boolean setPipeline(String name) {
 		int i = 0;
@@ -226,6 +235,7 @@ public class VisionServer {
 			if(p.equals(name)) {
 				return this.setPipeline(i);
 			}
+			i++;
 		}
 		return false;
 	}
@@ -252,6 +262,51 @@ public class VisionServer {
 	}
 
 
+
+	public static class CameraPreset {
+		
+		public final int brightness, exposure, whitebalance;
+
+		public CameraPreset(int b, int e, int wb) {
+			this.brightness = b;
+			this.exposure = e;
+			this.whitebalance = wb;
+		}
+
+	}
+	public static interface EntryPreset { void setValue(NetworkTable nt); }
+	public static abstract class EntryOption<type> implements EntryPreset {
+		
+		public final String entry;
+		public final type value;
+
+		public EntryOption(String n, type v) {
+			this.entry = n;
+			this.value = v;
+		}
+		//public abstract void setValue(NetworkTable nt);
+
+	}
+	public static class BooleanOption extends EntryOption<Boolean> {
+
+		public BooleanOption(String n, Boolean v) { super(n, v); }
+		public void setValue(NetworkTable nt) {
+			if(nt.containsKey(this.entry)) {
+				nt.getEntry(this.entry).setBoolean(this.value.booleanValue());
+			}
+		}
+
+	}
+	public static class NumberOption extends EntryOption<Double> {
+
+		public NumberOption(String n, Double v) { super(n, v); }
+		public void setValue(NetworkTable nt) {
+			if(nt.containsKey(this.entry)) {
+				nt.getEntry(this.entry).setDouble(this.value.doubleValue());
+			}
+		}
+
+	}
 
 	public static class VsCamera {
 
@@ -283,6 +338,9 @@ public class VisionServer {
 		public NetworkTableEntry getExposureEntry() { return this.self.getEntry("Exposure"); }
 		public NetworkTableEntry getBrightnessEntry() { return this.self.getEntry("Brightness"); }
 		public NetworkTableEntry getWhiteBalanceEntry() { return this.self.getEntry("WhiteBalance"); }
+		public boolean applyPreset(CameraPreset p) {
+			return this.setBrightness(p.brightness) && this.setExposure(p.exposure) && this.setWhiteBalance(p.whitebalance);
+		}
 
 		public String toString() {
 			return this.getClass().getName() + '(' + this.name + ")@" + Integer.toHexString(this.hashCode()) + 
@@ -315,6 +373,12 @@ public class VisionServer {
 		public int getIdx() { return this.idx; }
 		public String getName() { return this.name; }
 		public NetworkTable get() { return this.self; }
+
+		public void applyProperties(EntryPreset[] properties) {
+			for(EntryPreset preset : properties) {
+				preset.setValue(this.self);
+			}
+		}
 		
 		public NetworkTableEntry[] getEntries() {
 			NetworkTableEntry entries[] = new NetworkTableEntry[this.self.getKeys().size()];
