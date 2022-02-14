@@ -4,7 +4,6 @@ import java.util.ArrayList;
 
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.NetworkTableEntry;
-import edu.wpi.first.networktables.EntryListenerFlags;
 import edu.wpi.first.networktables.NetworkTable;
 
 // comment out this import and all commandbased-related code at the bottom of the file if you are not using the command library
@@ -113,7 +112,7 @@ public class VisionServer {
 		if(!this.arePipelinesUpdated()) {
 			this.updatePipelines();
 		}
-		return idx < this.vspipelines.size() ? idx > 0 ? this.vspipelines.get(idx) : null : null; 
+		return idx < this.vspipelines.size() ? idx >= 0 ? this.vspipelines.get(idx) : null : null; 
 	}
 	public VsPipeline getPipeline(String name) {
 		if(!this.arePipelinesUpdated()) {
@@ -191,7 +190,7 @@ public class VisionServer {
 	public int numCameras() { return (int)num_cams.getDouble(0.0); }	// returns 0 on failure
 	public int getCameraIdx() { return (int)cam_idx.getDouble(-1.0); }	// returns -1 on failure
 	public boolean setCamera(int idx) {		// returns whether the input index was valid or not
-		return idx < this.numCameras() && idx > 0 && cam_idx.setDouble(idx);
+		return idx < this.numCameras() && idx >= 0 && cam_idx.setDouble(idx);
 	}
 	public boolean setCamera(String name) {
 		int i = 0;
@@ -227,7 +226,7 @@ public class VisionServer {
 	public int numPipelines() { return (int)num_pipes.getDouble(0.0); }		// returns 0 on failure
 	public int getPipelineIdx() { return (int)pipe_idx.getDouble(-1.0); }	// returns -1 on failure
 	public boolean setPipeline(int idx) {	// returns whether the input index was valid or not
-		return idx < this.numPipelines() && idx > 0 && pipe_idx.setDouble(idx);
+		return idx < this.numPipelines() && idx >= 0 && pipe_idx.setDouble(idx);
 	}
 	public boolean setPipeline(String name) {
 		int i = 0;
@@ -289,7 +288,9 @@ public class VisionServer {
 	}
 	public static class BooleanOption extends EntryOption<Boolean> {
 
-		public BooleanOption(String n, Boolean v) { super(n, v); }
+		public BooleanOption(String n, Boolean v) { 
+			super(n, v); 
+		}
 		public void setValue(NetworkTable nt) {
 			if(nt.containsKey(this.entry)) {
 				nt.getEntry(this.entry).setBoolean(this.value.booleanValue());
@@ -299,7 +300,9 @@ public class VisionServer {
 	}
 	public static class NumberOption extends EntryOption<Double> {
 
-		public NumberOption(String n, Double v) { super(n, v); }
+		public NumberOption(String n, Double v) { 
+			super(n, v); 
+		}
 		public void setValue(NetworkTable nt) {
 			if(nt.containsKey(this.entry)) {
 				nt.getEntry(this.entry).setDouble(this.value.doubleValue());
