@@ -6,9 +6,6 @@ import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.NetworkTableEntry;
 import edu.wpi.first.networktables.NetworkTable;
 
-// comment out this import and all commandbased-related code at the bottom of the file if you are not using the command library
-import edu.wpi.first.wpilibj2.command.CommandBase;
-
 
 public class VisionServer {
 
@@ -20,7 +17,7 @@ public class VisionServer {
 	private ArrayList<VsPipeline> vspipelines = new ArrayList<VsPipeline>();
 
 	// singleton
-	private VisionServer() {
+	protected VisionServer() {
 		root = NetworkTableInstance.getDefault().getTable("Vision Server");
 		targets = NetworkTableInstance.getDefault().getTable("Targets");
 		cameras = root.getSubTable("Cameras");
@@ -44,7 +41,8 @@ public class VisionServer {
 		);
 	}
 	public static VisionServer Get() { return VisionServer.global; }
-	private static final VisionServer global = new VisionServer();
+	protected static void Sync(VisionServer inst) { global = inst; }
+	private static VisionServer global = new VisionServer();
 
 	public boolean areCamerasUpdated() { return this.vscameras.size() == (int)this.num_cams.getDouble(0.0); }
 	public boolean arePipelinesUpdated() { return this.vspipelines.size() == (int)this.num_pipes.getDouble(0.0); }
@@ -69,27 +67,27 @@ public class VisionServer {
 		}
 	}
 	public ArrayList<VsCamera> getCameras() { 
-		if(!this.areCamerasUpdated()) {
-			this.updateCameras();
-		}
+		// if(!this.areCamerasUpdated()) {
+		// 	this.updateCameras();
+		// }
 		return this.vscameras; 
 	}
 	public ArrayList<VsPipeline> getPipelines() { 
-		if(!this.arePipelinesUpdated()) {
-			this.updatePipelines();
-		}
+		// if(!this.arePipelinesUpdated()) {
+		// 	this.updatePipelines();
+		// }
 		return this.vspipelines; 
 	}
 	public VsCamera getCamera(int idx) { 
-		if(!this.areCamerasUpdated()) {
-			this.updateCameras();
-		}
+		// if(!this.areCamerasUpdated()) {
+		// 	this.updateCameras();
+		// }
 		return idx < this.vscameras.size() ? idx > 0 ? this.vscameras.get(idx) : null : null; 
 	}
 	public VsCamera getCamera(String name) {
-		if(!this.areCamerasUpdated()) {
-			this.updateCameras();
-		}
+		// if(!this.areCamerasUpdated()) {
+		// 	this.updateCameras();
+		// }
 		for(int i = 0; i < this.vscameras.size(); i++) {
 			if(this.vscameras.get(i).name.equals(name)) {
 				return this.vscameras.get(i);
@@ -98,9 +96,9 @@ public class VisionServer {
 		return null;
 	}
 	public int findCameraIdx(String name) {
-		if(!this.areCamerasUpdated()) {
-			this.updateCameras();
-		}
+		// if(!this.areCamerasUpdated()) {
+		// 	this.updateCameras();
+		// }
 		for(int i = 0; i < this.vscameras.size(); i++) {
 			if(this.vscameras.get(i).name.equals(name)) {
 				return i;
@@ -109,15 +107,15 @@ public class VisionServer {
 		return -1;
 	}
 	public VsPipeline getPipeline(int idx) { 
-		if(!this.arePipelinesUpdated()) {
-			this.updatePipelines();
-		}
+		// if(!this.arePipelinesUpdated()) {
+		// 	this.updatePipelines();
+		// }
 		return idx < this.vspipelines.size() ? idx >= 0 ? this.vspipelines.get(idx) : null : null; 
 	}
 	public VsPipeline getPipeline(String name) {
-		if(!this.arePipelinesUpdated()) {
-			this.updatePipelines();
-		}
+		// if(!this.arePipelinesUpdated()) {
+		// 	this.updatePipelines();
+		// }
 		for(int i = 0; i < this.vspipelines.size(); i++) {
 			if(this.vspipelines.get(i).name.equals(name)) {
 				return this.vspipelines.get(i);
@@ -126,9 +124,9 @@ public class VisionServer {
 		return null;
 	}
 	public int findPipelineIdx(String name) {	// returns -1 on failure
-		if(!this.arePipelinesUpdated()) {
-			this.updatePipelines();
-		}
+		// if(!this.arePipelinesUpdated()) {
+		// 	this.updatePipelines();
+		// }
 		for(int i = 0; i < this.vspipelines.size(); i++) {
 			if(this.vspipelines.get(i).name.equals(name)) {
 				return i;
@@ -137,16 +135,24 @@ public class VisionServer {
 		return -1;
 	}
 	public VsCamera getCurrentCamera() { 
-		if(!this.areCamerasUpdated()) {
-			this.updateCameras();
-		}
+		// if(!this.areCamerasUpdated()) {
+		// 	this.updateCameras();
+		// }
 		return this.getCamera(this.root.getEntry("Camera Name").getString("none")); 
 	}
 	public VsPipeline getCurrentPipeline() { 
-		if(!this.arePipelinesUpdated()) {
-			this.updatePipelines();
-		}
+		// if(!this.arePipelinesUpdated()) {
+		// 	this.updatePipelines();
+		// }
 		return this.getPipeline(this.getPipelineIdx()); 
+	}
+
+	public boolean applyCameraPreset(CameraPreset p) {
+		boolean ret = this.vscameras.size() > 0;
+		for(VsCamera camera : this.vscameras) {
+			ret &= camera.applyPreset(p);
+		}
+		return ret;
 	}
 
 	public boolean getIsShowingStatistics() { return root.getEntry("Show Statistics").getBoolean(false); }
@@ -159,13 +165,13 @@ public class VisionServer {
 		}
 		return false;
 	}
-	public boolean setPipelineEnabled(boolean val) {
+	public boolean setProcessingEnabled(boolean val) {
 		if(root.containsKey("Enable Processing")) {
 			return root.getEntry("Enable Processing").setBoolean(val);
 		}
 		return false;
 	}
-	public boolean togglePipelineEnabled() {
+	public boolean toggleProcessingEnabled() {
 		if(root.containsKey("Enable Processing")) {
 			return root.getEntry("Enable Processing").setBoolean(!root.getEntry("Enable Processing").getBoolean(true));
 		}
@@ -504,75 +510,4 @@ public class VisionServer {
 	}
 
 
-
-	// Command-based -> comment out if not using the commands library 
-
-	private final IncrementCamera inc_camera = new IncrementCamera();
-	private final DecrementCamera dec_camera = new DecrementCamera();
-	private final IncrementPipeline inc_pipeline = new IncrementPipeline();
-	private final DecrementPipeline dec_pipeline = new DecrementPipeline();
-	private final ToggleStatistics toggle_stats = new ToggleStatistics();
-	private final TogglePipeline toggle_pipeline = new TogglePipeline();
-
-	public static IncrementCamera getCameraIncrementCommand() { return global.inc_camera; }
-	public static DecrementCamera getCameraDecrementCommand() { return global.dec_camera; }
-	public static IncrementPipeline getPipelineIncrementCommand() { return global.inc_pipeline; }
-	public static DecrementPipeline getPipelineDecrementCommand() { return global.dec_pipeline; }
-	public static ToggleStatistics getToggleStatisticsCommand() { return global.toggle_stats; }
-	public static TogglePipeline getPipelineToggleCommand() { return global.toggle_pipeline; }
-
-	private class IncrementCamera extends CommandBase {
-		public IncrementCamera() {}
-		@Override public void initialize() { 
-			System.out.println("INCREMENT CAMERA");
-			incrementCamera(); 
-		}
-		@Override public boolean isFinished() { return true; }
-		@Override public boolean runsWhenDisabled() { return true; }
-	}
-	private class DecrementCamera extends CommandBase {
-		public DecrementCamera() {}
-		@Override public void initialize() { 
-			System.out.println("DECREMENT CAMERA");
-			decrementCamera(); 
-		}
-		@Override public boolean isFinished() { return true; }
-		@Override public boolean runsWhenDisabled() { return true; }
-	}
-	private class IncrementPipeline extends CommandBase {
-		public IncrementPipeline() {}
-		@Override public void initialize() { 
-			System.out.println("INCREMENT PIPELINE");
-			incrementPipeline(); }
-		@Override public boolean isFinished() { return true; }
-		@Override public boolean runsWhenDisabled() { return true; }
-	}
-	private class DecrementPipeline extends CommandBase {
-		public DecrementPipeline() {}
-		@Override public void initialize() { 
-			System.out.println("DECREMENT PIPELINE");
-			decrementPipeline(); 
-		}
-		@Override public boolean isFinished() { return true; }
-		@Override public boolean runsWhenDisabled() { return true; }
-	}
-	private class ToggleStatistics extends CommandBase {
-		public ToggleStatistics() {}
-		@Override public void initialize() { 
-			System.out.println("TOGGLE STATISTICS");
-			toggleStatistics(); 
-		}
-		@Override public boolean isFinished() { return true; }
-		@Override public boolean runsWhenDisabled() { return true; }
-	}
-	private class TogglePipeline extends CommandBase {
-		public TogglePipeline() {}
-		@Override public void initialize() { 
-			System.out.println("TOGGLE PROCESSING");
-			togglePipelineEnabled(); 
-		}
-		@Override public boolean isFinished() { return true; }
-		@Override public boolean runsWhenDisabled() { return true; }
-	}
-// 	private static class ToggleDebug extends CommandBase {		// not implemented yet
 }
