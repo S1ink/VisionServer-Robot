@@ -7,7 +7,10 @@ import edu.wpi.first.networktables.NetworkTableEntry;
 import edu.wpi.first.networktables.NetworkTable;
 
 
-public class VisionServer {
+/* TODO
+ - Do away with .Get() and make all methods static but still access the singleton internally
+*/
+public final class VisionServer {
 
 	public final NetworkTable 
 		root, targets, cameras, pipelines;
@@ -17,7 +20,15 @@ public class VisionServer {
 	private ArrayList<VsPipeline> vspipelines = new ArrayList<VsPipeline>();
 
 	// singleton
-	protected VisionServer() {
+	private static VisionServer singleton;
+	public static VisionServer Get() {
+		if(singleton == null) {
+			singleton = new VisionServer();
+			System.out.println("VisionServer Initialized.");
+		}
+		return singleton;
+	}
+	private VisionServer() {
 		root = NetworkTableInstance.getDefault().getTable("Vision Server");
 		targets = NetworkTableInstance.getDefault().getTable("Targets");
 		cameras = root.getSubTable("Cameras");
@@ -40,9 +51,6 @@ public class VisionServer {
 			}, false
 		);
 	}
-	public static VisionServer Get() { return VisionServer.global; }
-	protected static void Sync(VisionServer inst) { global = inst; }
-	private static VisionServer global = new VisionServer();
 
 	public boolean areCamerasUpdated() { return this.vscameras.size() == (int)this.num_cams.getDouble(0.0); }
 	public boolean arePipelinesUpdated() { return this.vspipelines.size() == (int)this.num_pipes.getDouble(0.0); }

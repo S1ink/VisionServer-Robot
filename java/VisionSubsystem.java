@@ -1,81 +1,67 @@
 package frc.robot.modules.vision.java;
 
 import edu.wpi.first.wpilibj2.command.CommandBase;
-import edu.wpi.first.wpilibj2.command.Subsystem;
+//import edu.wpi.first.wpilibj2.command.Subsystem;
 
 
-public class VisionSubsystem extends VisionServer implements Subsystem {
+public class VisionSubsystem {
 
-	// better solution for this >>
-	private static final VisionSubsystem subsystem_global = new VisionSubsystem();
-	private VisionSubsystem() { 
-		super(); 
-		VisionServer.Sync(this);
-	}
-	public static VisionSubsystem Get() { return subsystem_global; }
-
-	@Override public void periodic() {
-
-	}
-
-	private final IncrementCamera inc_camera = new IncrementCamera();
-	private final DecrementCamera dec_camera = new DecrementCamera();
-	private final IncrementPipeline inc_pipeline = new IncrementPipeline();
-	private final DecrementPipeline dec_pipeline = new DecrementPipeline();
-	private final ToggleStatistics toggle_stats = new ToggleStatistics();
-	private final ToggleProcessing toggle_pipeline = new ToggleProcessing();
-
-	public static IncrementCamera getCameraIncrementCommand() { return subsystem_global.inc_camera; }
-	public static DecrementCamera getCameraDecrementCommand() { return subsystem_global.dec_camera; }
-	public static IncrementPipeline getPipelineIncrementCommand() { return subsystem_global.inc_pipeline; }
-	public static DecrementPipeline getPipelineDecrementCommand() { return subsystem_global.dec_pipeline; }
-	public static ToggleStatistics getToggleStatisticsCommand() { return subsystem_global.toggle_stats; }
-	public static ToggleProcessing getProcessingToggleCommand() { return subsystem_global.toggle_pipeline; }
-
-	private class InstantGlobal extends CommandBase {
+	private static class InstantGlobal extends CommandBase {
 		@Override public boolean isFinished() { return true; }
 		@Override public boolean runsWhenDisabled() { return true; }
 	}
 
-	private class IncrementCamera extends InstantGlobal {
-		public IncrementCamera() {}
+	public static class IncrementCamera extends InstantGlobal {
+		private static final IncrementCamera inst = new IncrementCamera();
+		private IncrementCamera() {}
+		public static IncrementCamera Get() { return inst; }
 		@Override public void initialize() { 
 			System.out.println("INCREMENT CAMERA");
-			incrementCamera(); 
+			VisionServer.Get().incrementCamera(); 
 		}
 	}
-	private class DecrementCamera extends InstantGlobal {
-		public DecrementCamera() {}
+	public static class DecrementCamera extends InstantGlobal {
+		private static final DecrementCamera inst = new DecrementCamera();
+		private DecrementCamera() {}
+		public static DecrementCamera Get() { return inst; }
 		@Override public void initialize() { 
 			System.out.println("DECREMENT CAMERA");
-			decrementCamera(); 
+			VisionServer.Get().decrementCamera(); 
 		}
 	}
-	private class IncrementPipeline extends InstantGlobal {
-		public IncrementPipeline() {}
+	public static class IncrementPipeline extends InstantGlobal {
+		private static final IncrementPipeline inst = new IncrementPipeline();
+		private IncrementPipeline() {}
+		public static IncrementPipeline Get() { return inst; }
 		@Override public void initialize() { 
 			System.out.println("INCREMENT PIPELINE");
-			incrementPipeline(); }
+			VisionServer.Get().incrementPipeline(); }
 	}
-	private class DecrementPipeline extends InstantGlobal {
-		public DecrementPipeline() {}
+	public static class DecrementPipeline extends InstantGlobal {
+		private static final DecrementPipeline inst = new DecrementPipeline();
+		private DecrementPipeline() {}
+		public static DecrementPipeline Get() { return inst; }
 		@Override public void initialize() { 
 			System.out.println("DECREMENT PIPELINE");
-			decrementPipeline(); 
+			VisionServer.Get().decrementPipeline(); 
 		}
 	}
-	private class ToggleStatistics extends InstantGlobal {
-		public ToggleStatistics() {}
+	public static class ToggleStatistics extends InstantGlobal {
+		private static final ToggleStatistics inst = new ToggleStatistics();
+		private ToggleStatistics() {}
+		public static ToggleStatistics Get() { return inst; }
 		@Override public void initialize() { 
 			System.out.println("TOGGLE STATISTICS");
-			toggleStatistics(); 
+			VisionServer.Get().toggleStatistics(); 
 		}
 	}
-	private class ToggleProcessing extends InstantGlobal {
-		public ToggleProcessing() {}
+	public static class ToggleProcessing extends InstantGlobal {
+		private static final ToggleProcessing inst = new ToggleProcessing();
+		private ToggleProcessing() {}
+		public static ToggleProcessing Get() { return inst; }
 		@Override public void initialize() { 
 			System.out.println("TOGGLE PROCESSING");
-			toggleProcessingEnabled(); 
+			VisionServer.Get().toggleProcessingEnabled(); 
 		}
 	}
 
