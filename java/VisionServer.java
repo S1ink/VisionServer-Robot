@@ -18,6 +18,7 @@ public final class VisionServer {
 		active_target, num_cams, cam_idx, num_pipes, pipe_idx;
 	private ArrayList<VsCamera> vscameras = new ArrayList<VsCamera>();
 	private ArrayList<VsPipeline> vspipelines = new ArrayList<VsPipeline>();
+	private boolean connected = false;
 
 	// singleton
 	private static VisionServer singleton;
@@ -43,11 +44,13 @@ public final class VisionServer {
 		cameras.addSubTableListener(
 			(parent, name, table) -> {
 				this.updateCameras();
+				this.connected = true;
 			}, false
 		);
 		pipelines.addSubTableListener(
 			(parent, name, table) -> {
 				this.updatePipelines();
+				this.connected = true;
 			}, false
 		);
 	}
@@ -186,6 +189,7 @@ public final class VisionServer {
 		return false;
 	}
 
+	public boolean isConnected() { return this.connected; }
 	public boolean hasActiveTarget() { return !active_target.getString("none").equals("none"); }	// returns "none" on error
 	public NetworkTable getActiveTarget() { return targets.getSubTable(active_target.getString("none")); }	// returns "none" on error
 	public String getActiveTargetName() { return active_target.getString("none"); }	// returns "none" on error
@@ -210,6 +214,7 @@ public final class VisionServer {
 		int i = 0;
 		for(String c : this.cameras.getSubTables()) {
 			if(c.equals(name)) {
+				//System.out.println("SetCamera: idx(" + i + "), name(" + name + ")");
 				return this.setCamera(i);
 			}
 			i++;
