@@ -522,5 +522,9 @@ public final class VisionServer {
 		}
 	}
 
+	public static interface Conversion {
+		double convert(double v);
+	}
+
 
 }
