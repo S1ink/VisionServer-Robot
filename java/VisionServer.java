@@ -7,275 +7,305 @@ import edu.wpi.first.networktables.NetworkTableEntry;
 import edu.wpi.first.networktables.NetworkTable;
 
 
-/* TODO
- - Do away with .Get() and make all methods static but still access the singleton internally
-*/
 public final class VisionServer {
 
-	public final NetworkTable 
-		root, targets, cameras, pipelines;
-	private final NetworkTableEntry 
-		active_target, num_cams, cam_idx, num_pipes, pipe_idx;
-	private ArrayList<VsCamera> vscameras = new ArrayList<VsCamera>();
+	public static interface Conversion { double convert(double v); }
+
+
 	private ArrayList<VsPipeline> vspipelines = new ArrayList<VsPipeline>();
+	private ArrayList<VsCamera> vscameras = new ArrayList<VsCamera>();
+
 	private boolean connected = false;
 
-	// singleton
-	private static VisionServer singleton;
-	public static VisionServer Get() {
-		if(singleton == null) {
-			singleton = new VisionServer();
-			System.out.println("VisionServer Initialized.");
-		}
-		return singleton;
-	}
+	private final NetworkTable
+		root,
+		targets,
+		cameras,
+		pipelines;
+	private final NetworkTableEntry
+		active_target,
+		num_cams,
+		cam_idx,
+		num_pipes,
+		pipe_idx;
+
+
 	private VisionServer() {
-		root = NetworkTableInstance.getDefault().getTable("Vision Server");
-		targets = NetworkTableInstance.getDefault().getTable("Targets");
-		cameras = root.getSubTable("Cameras");
-		pipelines = root.getSubTable("Pipelines");
 
-		active_target = root.getEntry("Active Target");
-		num_cams = root.getEntry("Cameras Available");
-		cam_idx = root.getEntry("Camera Index");
-		num_pipes = root.getEntry("Pipelines Available");
-		pipe_idx = root.getEntry("Pipeline Index");
+		this.root = NetworkTableInstance.getDefault().getTable( "Vision Server" );
+		this.targets = NetworkTableInstance.getDefault().getTable( "Targets" );
+		this.cameras = root.getSubTable( "Cameras" );
+		this.pipelines = root.getSubTable( "Pipelines" );
 
-		cameras.addSubTableListener(
+		this.active_target = root.getEntry( "Active Target" );
+		this.num_cams = root.getEntry( "Cameras Available" );
+		this.cam_idx = root.getEntry( "Camera Index" );
+		this.num_pipes = root.getEntry( "Pipelines Available" );
+		this.pipe_idx = root.getEntry( "Pipeline Index" );
+
+		this.cameras.addSubTableListener(
 			(parent, name, table) -> {
-				this.updateCameras();
+				updateCameras();
 				this.connected = true;
 			}, false
 		);
-		pipelines.addSubTableListener(
+		this.pipelines.addSubTableListener(
 			(parent, name, table) -> {
-				this.updatePipelines();
+				updatePipelines();
 				this.connected = true;
 			}, false
 		);
+
+		System.out.println("VisionServer Initialized.");
+
+	}
+	private static VisionServer vsi = new VisionServer();	// "VisionServer Instance"
+	public static VisionServer Get() { return vsi; }
+
+
+
+	public static NetworkTable getRoot() {
+		return vsi.root;
+	}
+	public static NetworkTable getTargetsTable() {
+		return vsi.targets;
+	}
+	public static NetworkTable getCamerasTable() {
+		return vsi.cameras;
+	}
+	public static NetworkTable getPipelinesTable() {
+		return vsi.pipelines;
 	}
 
-	public boolean areCamerasUpdated() { return this.vscameras.size() == (int)this.num_cams.getDouble(0.0); }
-	public boolean arePipelinesUpdated() { return this.vspipelines.size() == (int)this.num_pipes.getDouble(0.0); }
-	public void updateCameras() {
-		System.out.println("Updated Cameras");
-		this.vscameras.clear();
+
+
+	public static boolean areCamerasUpdated() {
+		return vsi.vscameras.size() == (int)vsi.num_cams.getDouble(0.0);
+	}
+	public static boolean arePipelinesUpdated() {
+		return vsi.vspipelines.size() == (int)vsi.num_pipes.getDouble(0.0);
+	}
+	public static void updateCameras() {
+		vsi.vscameras.clear();
 		int i  = 0;
-		for(String subtable : this.cameras.getSubTables()) {
-			this.vscameras.add(new VsCamera(this.cameras.getSubTable(subtable)));
-			this.vscameras.get(i).idx = i;
+		for(String subtable : vsi.cameras.getSubTables()) {
+			vsi.vscameras.add(new VsCamera(vsi.cameras.getSubTable(subtable)));
+			vsi.vscameras.get(i).idx = i;
 			i++;
 		}
+		System.out.println("Updated Cameras");
 	}
-	public void updatePipelines() {
-		System.out.println("Updated Pipelines");
-		this.vspipelines.clear();
+	public static void updatePipelines() {
+		vsi.vspipelines.clear();
 		int i = 0;
-		for(String subtable : this.pipelines.getSubTables()) {
-			this.vspipelines.add(new VsPipeline(this.pipelines.getSubTable(subtable)));
-			this.vspipelines.get(i).idx = i;
+		for(String subtable : vsi.pipelines.getSubTables()) {
+			vsi.vspipelines.add(new VsPipeline(vsi.pipelines.getSubTable(subtable)));
+			vsi.vspipelines.get(i).idx = i;
 			i++;
 		}
+		System.out.println("Updated Pipelines");
 	}
-	public ArrayList<VsCamera> getCameras() { 
-		// if(!this.areCamerasUpdated()) {
-		// 	this.updateCameras();
-		// }
-		return this.vscameras; 
+	public static ArrayList<VsCamera> getCameras() {
+		return vsi.vscameras; 
 	}
-	public ArrayList<VsPipeline> getPipelines() { 
-		// if(!this.arePipelinesUpdated()) {
-		// 	this.updatePipelines();
-		// }
-		return this.vspipelines; 
+	public static ArrayList<VsPipeline> getPipelines() {
+		return vsi.vspipelines; 
 	}
-	public VsCamera getCamera(int idx) { 
-		// if(!this.areCamerasUpdated()) {
-		// 	this.updateCameras();
-		// }
-		return idx < this.vscameras.size() ? idx > 0 ? this.vscameras.get(idx) : null : null; 
+	public static VsCamera getCamera(int idx) {
+		return idx < vsi.vscameras.size() ? idx > 0 ? vsi.vscameras.get(idx) : null : null; 
 	}
-	public VsCamera getCamera(String name) {
-		// if(!this.areCamerasUpdated()) {
-		// 	this.updateCameras();
-		// }
-		for(int i = 0; i < this.vscameras.size(); i++) {
-			if(this.vscameras.get(i).name.equals(name)) {
-				return this.vscameras.get(i);
+	public static VsCamera getCamera(String name) {
+		for(int i = 0; i < vsi.vscameras.size(); i++) {
+			if(vsi.vscameras.get(i).name.equals(name)) {
+				return vsi.vscameras.get(i);
 			}
 		}
 		return null;
 	}
-	public int findCameraIdx(String name) {
-		// if(!this.areCamerasUpdated()) {
-		// 	this.updateCameras();
-		// }
-		for(int i = 0; i < this.vscameras.size(); i++) {
-			if(this.vscameras.get(i).name.equals(name)) {
+	public static int findCameraIdx(String name) {
+		for(int i = 0; i < vsi.vscameras.size(); i++) {
+			if(vsi.vscameras.get(i).name.equals(name)) {
 				return i;
 			}
 		}
 		return -1;
 	}
-	public VsPipeline getPipeline(int idx) { 
-		// if(!this.arePipelinesUpdated()) {
-		// 	this.updatePipelines();
-		// }
-		return idx < this.vspipelines.size() ? idx >= 0 ? this.vspipelines.get(idx) : null : null; 
+	public static VsPipeline getPipeline(int idx) {
+		return idx < vsi.vspipelines.size() ? idx >= 0 ? vsi.vspipelines.get(idx) : null : null; 
 	}
-	public VsPipeline getPipeline(String name) {
-		// if(!this.arePipelinesUpdated()) {
-		// 	this.updatePipelines();
-		// }
-		for(int i = 0; i < this.vspipelines.size(); i++) {
-			if(this.vspipelines.get(i).name.equals(name)) {
-				return this.vspipelines.get(i);
+	public static VsPipeline getPipeline(String name) {
+		for(int i = 0; i < vsi.vspipelines.size(); i++) {
+			if(vsi.vspipelines.get(i).name.equals(name)) {
+				return vsi.vspipelines.get(i);
 			}
 		}
 		return null;
 	}
-	public int findPipelineIdx(String name) {	// returns -1 on failure
-		// if(!this.arePipelinesUpdated()) {
-		// 	this.updatePipelines();
-		// }
-		for(int i = 0; i < this.vspipelines.size(); i++) {
-			if(this.vspipelines.get(i).name.equals(name)) {
+	public static int findPipelineIdx(String name) {	// returns -1 on failure
+		for(int i = 0; i < vsi.vspipelines.size(); i++) {
+			if(vsi.vspipelines.get(i).name.equals(name)) {
 				return i;
 			}
 		}
 		return -1;
 	}
-	public VsCamera getCurrentCamera() { 
-		// if(!this.areCamerasUpdated()) {
-		// 	this.updateCameras();
-		// }
-		return this.getCamera(this.root.getEntry("Camera Name").getString("none")); 
+	public static VsCamera getCurrentCamera() {
+		return getCamera(vsi.root.getEntry("Camera Name").getString("none")); 
 	}
-	public VsPipeline getCurrentPipeline() { 
-		// if(!this.arePipelinesUpdated()) {
-		// 	this.updatePipelines();
-		// }
-		return this.getPipeline(this.getPipelineIdx()); 
+	public static VsPipeline getCurrentPipeline() {
+		return getPipeline(getPipelineIdx()); 
 	}
 
-	public boolean applyCameraPreset(CameraPreset p) {
-		boolean ret = this.vscameras.size() > 0;
-		for(VsCamera camera : this.vscameras) {
+	public static boolean applyCameraPreset(CameraPreset p) {
+		boolean ret = vsi.vscameras.size() > 0;
+		for(VsCamera camera : vsi.vscameras) {
 			ret &= camera.applyPreset(p);
 		}
 		return ret;
 	}
 
-	public boolean getIsShowingStatistics() { return root.getEntry("Show Statistics").getBoolean(false); }
-	public void setStatistics(boolean val) { root.getEntry("Show Statistics").setBoolean(val); }
-	public void toggleStatistics() { this.setStatistics(!this.getIsShowingStatistics()); }
-
-	public boolean getIsPipelineEnabled() { 
-		if(root.containsKey("Enable Processing")) {
-			return root.getEntry("Enable Processing").getBoolean(true);
-		}
-		return false;
+	public static boolean getIsShowingStatistics() {
+		return vsi.root.getEntry("Show Statistics").getBoolean(false);
 	}
-	public boolean setProcessingEnabled(boolean val) {
-		if(root.containsKey("Enable Processing")) {
-			return root.getEntry("Enable Processing").setBoolean(val);
-		}
-		return false;
+	public static void setStatistics(boolean val) {
+		vsi.root.getEntry("Show Statistics").setBoolean(val);
 	}
-	public boolean toggleProcessingEnabled() {
-		if(root.containsKey("Enable Processing")) {
-			return root.getEntry("Enable Processing").setBoolean(!root.getEntry("Enable Processing").getBoolean(true));
-		}
-		return false;
+	public static void toggleStatistics() {
+		setStatistics(!getIsShowingStatistics());
 	}
 
-	public boolean isConnected() { return this.connected; }
-	public boolean hasActiveTarget() { return !active_target.getString("none").equals("none"); }	// returns "none" on error
-	public NetworkTable getActiveTarget() { return targets.getSubTable(active_target.getString("none")); }	// returns "none" on error
-	public String getActiveTargetName() { return active_target.getString("none"); }	// returns "none" on error
-	public double getDistance() { return this.getActiveTarget().getEntry("distance").getDouble(0.0); }
-	public double getThetaUD() { return this.getActiveTarget().getEntry("up-down").getDouble(0.0); }
-	public double getThetaLR() { return this.getActiveTarget().getEntry("left-right").getDouble(0.0); }
-	public TargetOffset getTargetPos() { return new TargetOffset(this.getActiveTarget()); }
-	public TargetData getTargetData() { return new TargetData(this.getActiveTarget()); }
-	public TargetData getTargetDataIfMatching(String target) {	// returns null on mismatch
-		if(this.getActiveTargetName().equals(target)) {
-			return this.getTargetData();
+	public static boolean getIsPipelineEnabled() { 
+		if(vsi.root.containsKey("Enable Processing")) {
+			return vsi.root.getEntry("Enable Processing").getBoolean(true);
+		}
+		return false;
+	}
+	public static boolean setProcessingEnabled(boolean val) {
+		if(vsi.root.containsKey("Enable Processing")) {
+			return vsi.root.getEntry("Enable Processing").setBoolean(val);
+		}
+		return false;
+	}
+	public static boolean toggleProcessingEnabled() {
+		if(vsi.root.containsKey("Enable Processing")) {
+			return vsi.root.getEntry("Enable Processing").setBoolean(!vsi.root.getEntry("Enable Processing").getBoolean(true));
+		}
+		return false;
+	}
+
+	public static boolean isConnected() {
+		return vsi.connected;
+	}
+	public static boolean hasActiveTarget() {
+		return !vsi.active_target.getString("none").equals("none");	// returns "none" on failure
+	}
+	public static NetworkTable getActiveTarget() {
+		return vsi.targets.getSubTable(vsi.active_target.getString("none"));	// returns "none" on failure
+	}
+	public static String getActiveTargetName() {
+		return vsi.active_target.getString("none");	// returns "none" on failure
+	}
+	public static double getDistance() {
+		return getActiveTarget().getEntry("distance").getDouble(0.0);
+	}
+	public static double getThetaUD() {
+		return getActiveTarget().getEntry("up-down").getDouble(0.0);
+	}
+	public static double getThetaLR() {
+		return getActiveTarget().getEntry("left-right").getDouble(0.0);
+	}
+	public static TargetOffset getTargetPos() {
+		return new TargetOffset(getActiveTarget());
+	}
+	public static TargetData getTargetData() {
+		return new TargetData(getActiveTarget());
+	}
+	public static TargetData getTargetDataIfMatching(String target) {	// returns null on mismatch
+		if(getActiveTargetName().equals(target)) {
+			return getTargetData();
 		}
 		return null;
 	}
 
-	public int numCameras() { return (int)num_cams.getDouble(0.0); }	// returns 0 on failure
-	public int getCameraIdx() { return (int)cam_idx.getDouble(-1.0); }	// returns -1 on failure
-	public boolean setCamera(int idx) {		// returns whether the input index was valid or not
-		return idx < this.numCameras() && idx >= 0 && cam_idx.setDouble(idx);
+	public static int numCameras() {
+		return (int)vsi.num_cams.getDouble(0.0);	// returns 0 on failure
 	}
-	public boolean setCamera(String name) {
+	public static int getCameraIdx() {
+		return (int)vsi.cam_idx.getDouble(-1.0);	// returns -1 on failure
+	}
+	public static boolean setCamera(int idx) {		// returns whether the input index was valid or not
+		return idx < numCameras() && idx >= 0 && vsi.cam_idx.setDouble(idx);
+	}
+	public static boolean setCamera(String name) {
 		int i = 0;
-		for(String c : this.cameras.getSubTables()) {
+		for(String c : vsi.cameras.getSubTables()) {
 			if(c.equals(name)) {
 				//System.out.println("SetCamera: idx(" + i + "), name(" + name + ")");
-				return this.setCamera(i);
+				return setCamera(i);
 			}
 			i++;
 		}
 		return false;
 	}
-	public boolean setCamera(VsCamera cam) {
-		return this.setCamera(cam.name);
+	public static boolean setCamera(VsCamera cam) {
+		return setCamera(cam.name);
 	}
-	public boolean incrementCamera() {
-		int idx = this.getCameraIdx();
-		if(idx + 1 < this.numCameras()) {
-			cam_idx.setDouble(idx + 1);
+	public static boolean incrementCamera() {
+		int idx = getCameraIdx();
+		if(idx + 1 < numCameras()) {
+			vsi.cam_idx.setDouble(idx + 1);
 			return true;
 		}
-		cam_idx.setDouble(0.0);	// wrap around
+		vsi.cam_idx.setDouble(0.0);	// wrap around
 		return false;
 	}
-	public boolean decrementCamera() {
-		int idx = this.getCameraIdx();
+	public static boolean decrementCamera() {
+		int idx = getCameraIdx();
 		if(idx - 1 >= 0) {
-			cam_idx.setDouble(idx - 1);
+			vsi.cam_idx.setDouble(idx - 1);
 			return true;
 		}
-		cam_idx.setDouble(this.numCameras() - 1);	// wrap around
+		vsi.cam_idx.setDouble(numCameras() - 1);	// wrap around
 		return false;
 	}
-	public int numPipelines() { return (int)num_pipes.getDouble(0.0); }		// returns 0 on failure
-	public int getPipelineIdx() { return (int)pipe_idx.getDouble(-1.0); }	// returns -1 on failure
-	public boolean setPipeline(int idx) {	// returns whether the input index was valid or not
-		return idx < this.numPipelines() && idx >= 0 && pipe_idx.setDouble(idx);
+	public static int numPipelines() {
+		return (int)vsi.num_pipes.getDouble(0.0);		// returns 0 on failure
 	}
-	public boolean setPipeline(String name) {
+	public static int getPipelineIdx() {
+		return (int)vsi.pipe_idx.getDouble(-1.0);		// returns -1 on failure
+	}
+	public static boolean setPipeline(int idx) {	// returns whether the input index was valid or not
+		return idx < numPipelines() && idx >= 0 && vsi.pipe_idx.setDouble(idx);
+	}
+	public static boolean setPipeline(String name) {
 		int i = 0;
-		for(String p : this.pipelines.getSubTables()) {
+		for(String p : vsi.pipelines.getSubTables()) {
 			if(p.equals(name)) {
-				return this.setPipeline(i);
+				return setPipeline(i);
 			}
 			i++;
 		}
 		return false;
 	}
-	public boolean setPipeline(VsPipeline pipe) {
-		return this.setPipeline(pipe.name);
+	public static boolean setPipeline(VsPipeline pipe) {
+		return setPipeline(pipe.name);
 	}
-	public boolean incrementPipeline() {
-		int idx = this.getPipelineIdx();
-		if(idx + 1 < this.numPipelines()) {
-			pipe_idx.setDouble(idx + 1);
+	public static boolean incrementPipeline() {
+		int idx = getPipelineIdx();
+		if(idx + 1 < numPipelines()) {
+			vsi.pipe_idx.setDouble(idx + 1);
 			return true;
 		}
-		pipe_idx.setDouble(0.0);	// wrap around
+		vsi.pipe_idx.setDouble(0.0);	// wrap around
 		return false;
 	}
-	public boolean decrementPipeline() {
-		int idx = this.getPipelineIdx();
+	public static boolean decrementPipeline() {
+		int idx = getPipelineIdx();
 		if(idx - 1 >= 0) {
-			pipe_idx.setDouble(idx - 1);
+			vsi.pipe_idx.setDouble(idx - 1);
 			return true;
 		}
-		pipe_idx.setDouble(this.numPipelines() - 1);	// wrap around
+		vsi.pipe_idx.setDouble(numPipelines() - 1);	// wrap around
 		return false;
 	}
 
@@ -330,6 +360,8 @@ public final class VisionServer {
 
 	}
 
+
+
 	public static class VsCamera {
 
 		private NetworkTable self;
@@ -347,19 +379,43 @@ public final class VisionServer {
 		public VsCamera(NetworkTable nt) { this.update(nt); }
 		public VsCamera(String tname) { this.update(tname); }
 
-		public int getIdx() { return this.idx; }
-		public String getName() { return this.name; }
-		public NetworkTable get() { return this.self; }
+		public int getIdx() {
+			return this.idx;
+		}
+		public String getName() {
+			return this.name;
+		}
+		public NetworkTable get() {
+			return this.self;
+		}
 
-		public int getExposure() { return (int)this.self.getEntry("Exposure").getDouble(0.0); }
-		public int getBrightness() { return (int)this.self.getEntry("Brightness").getDouble(0.0); }
-		public int getWhiteBalance() {return (int)this.self.getEntry("WhiteBalance").getDouble(0.0); }
-		public boolean setExposure(int e) { return this.self.getEntry("Exposure").setDouble(e); }
-		public boolean setBrightness(int b) { return this.self.getEntry("Brightness").setDouble(b); }
-		public boolean setWhiteBalance(int wb) { return this.self.getEntry("WhiteBalance").setDouble(wb); }
-		public NetworkTableEntry getExposureEntry() { return this.self.getEntry("Exposure"); }
-		public NetworkTableEntry getBrightnessEntry() { return this.self.getEntry("Brightness"); }
-		public NetworkTableEntry getWhiteBalanceEntry() { return this.self.getEntry("WhiteBalance"); }
+		public int getExposure() {
+			return (int)this.self.getEntry("Exposure").getDouble(0.0);
+		}
+		public int getBrightness() {
+			return (int)this.self.getEntry("Brightness").getDouble(0.0);
+		}
+		public int getWhiteBalance() {
+			return (int)this.self.getEntry("WhiteBalance").getDouble(0.0);
+		}
+		public boolean setExposure(int e) {
+			return this.self.getEntry("Exposure").setDouble(e);
+		}
+		public boolean setBrightness(int b) {
+			return this.self.getEntry("Brightness").setDouble(b);
+		}
+		public boolean setWhiteBalance(int wb) {
+			return this.self.getEntry("WhiteBalance").setDouble(wb);
+		}
+		public NetworkTableEntry getExposureEntry() {
+			return this.self.getEntry("Exposure");
+		}
+		public NetworkTableEntry getBrightnessEntry() {
+			return this.self.getEntry("Brightness");
+		}
+		public NetworkTableEntry getWhiteBalanceEntry() {
+			return this.self.getEntry("WhiteBalance");
+		}
 		public boolean applyPreset(CameraPreset p) {
 			return this.setBrightness(p.brightness) && this.setExposure(p.exposure) && this.setWhiteBalance(p.whitebalance);
 		}
@@ -369,12 +425,14 @@ public final class VisionServer {
 				": {EX: " + this.getExposure() + ", BR: " + this.getBrightness() + ", WB: " + this.getWhiteBalance() + '}';
 		}
 
+
 	}
 	public static class VsPipeline {
 
 		private NetworkTable self;
 		private String name;
 		private int idx = -1;
+
 		NetworkTableEntry debug = null, thresh = null;
 
 		public void update(NetworkTable nt) {
@@ -392,9 +450,15 @@ public final class VisionServer {
 			this.update(tname);
 		}
 
-		public int getIdx() { return this.idx; }
-		public String getName() { return this.name; }
-		public NetworkTable get() { return this.self; }
+		public int getIdx() {
+			return this.idx;
+		}
+		public String getName() {
+			return this.name;
+		}
+		public NetworkTable get() {
+			return this.self;
+		}
 
 		public void applyProperties(EntryPreset[] properties) {
 			for(EntryPreset preset : properties) {
@@ -482,6 +546,7 @@ public final class VisionServer {
 			return this.thresh.setBoolean(val);
 		}
 
+
 	}
 
 	public static class TargetOffset {
@@ -520,10 +585,6 @@ public final class VisionServer {
 			this.ud = target.getEntry("up-down").getDouble(0.0);
 			this.lr = target.getEntry("left-right").getDouble(0.0);
 		}
-	}
-
-	public static interface Conversion {
-		double convert(double v);
 	}
 
 
