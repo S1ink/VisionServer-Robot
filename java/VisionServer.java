@@ -347,14 +347,26 @@ public final class VisionServer {
 		}
 
 	}
-	public static class NumberOption extends EntryOption<Double> {
+	public static class NumericOption extends EntryOption<Double> {
 
-		public NumberOption(String n, Double v) { 
+		public NumericOption(String n, Double v) { 
 			super(n, v); 
 		}
 		public void setValue(NetworkTable nt) {
 			if(nt.containsKey(this.entry)) {
 				nt.getEntry(this.entry).setDouble(this.value.doubleValue());
+			}
+		}
+
+	}
+	public static class StringOption extends EntryOption<String> {
+
+		public StringOption(String n, String v) {
+			super(n, v);
+		}
+		public void setValue(NetworkTable nt) {
+			if(nt.containsKey(this.entry)) {
+				nt.getEntry(this.entry).setString(this.value);
 			}
 		}
 
