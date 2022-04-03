@@ -1,150 +1,213 @@
 #include "VisionServer.h"
 
-const std::shared_ptr<nt::NetworkTable>
-	VisionServer::root = nt::NetworkTableInstance::GetDefault().GetTable("Vision Server"),
-	VisionServer::targets = nt::NetworkTableInstance::GetDefault().GetTable("Targets"),
-	VisionServer::cameras = root->GetSubTable("Cameras"),
-	VisionServer::pipelines = root->GetSubTable("Pipelines");
-nt::NetworkTableEntry
-	VisionServer::active_target = root->GetEntry("Active Target"),
-	VisionServer::num_cams = root->GetEntry("Cameras Available"),
-	VisionServer::cam_idx = root->GetEntry("Camera Index"),
-	VisionServer::num_pipes = root->GetEntry("Pipelines Available"),
-	VisionServer::pipe_idx = root->GetEntry("Pipeline Index");
+#include <iostream>
 
-VisionServer::VisionServer() {
-	this->updateCameras();
-	this->updatePipelines();
+
+VisionServer::VisionServer() :
+	root = nt::NetworkTableInstance::GetDefault().GetTable("Vision Server"),
+	targets = nt::NetworkTableInstance::GetDefault().GetTable("Targets"),
+	cameras = root->GetSubTable("Cameras"),
+	pipelines = root->GetSubTable("Pipelines"),
+	active_target = root->GetEntry("Active Target"),
+	num_cams = root->GetEntry("Cameras Available"),
+	cam_idx = root->GetEntry("Camera Index"),
+	num_pipes = root->GetEntry("Pipelines Available"),
+	pipe_idx = root->GetEntry("Pipeline Index")
+{
+	this->root->GetEntry("Robot-CoProcessor Connected?").SetBoolean(false);
+	this->cameras->AddSubTableListener(
+		[this](NetworkTable* p, std::string_view n, std::shared_ptr<NetworkTable> t){
+			VisionServer::updateCameras();
+			this->connected = true;
+			this->root->GetEntry("Robot-CoProcessor Connected?").SetBoolean(true);
+		}, false
+	);
+	this.pipelines->AddSubTableListener(
+		[this](NetworkTable* p, std::string_view n, std::shared_ptr<NetworkTable> t){
+			VisionServer::updatePipelines();
+			this->connected = true;
+		}, false
+	);
+	std::cout << "VisionServer Initialized.\n";
 }
 VisionServer& VisionServer::Get() {
-	static VisionServer global;
-	return global;
+	return vsi;
 }
+
 void VisionServer::updateCameras() {
-	this->vscameras.clear();
+	vsi.vscameras.clear();
 	for(const std::string& subtable : cameras->GetSubTables()) {
-		this->vscameras.emplace_back(subtable);
+		vsi.vscameras.emplace_back(subtable);
 	}
 }
 void VisionServer::updatePipelines() {
-	this->vspipelines.clear();
+	vsi.vspipelines.clear();
 	for(const std::string& subtable : cameras->GetSubTables()) {
-		this->vspipelines.emplace_back(subtable);
+		vsi.vspipelines.emplace_back(subtable);
 	}
 }
 std::vector<VisionServer::VsCamera>& VisionServer::getCameras() { 
-	if(!this->areCamerasUpdated()) { 
-		this->updateCameras(); 
+	if(!vsi.areCamerasUpdated()) { 
+		vsi.updateCameras(); 
 	}
-	return this->vscameras; 
+	return vsi.vscameras; 
 }
 std::vector<VisionServer::VsPipeline>& VisionServer::getPipelines() { 
-	if(!this->arePipelinesUpdated()) { 
-		this->updatePipelines(); 
+	if(!vsi.arePipelinesUpdated()) { 
+		vsi.updatePipelines(); 
 	}
-	return this->vspipelines; 
+	return vsi.vspipelines; 
 }
 VisionServer::VsCamera* VisionServer::getCamera(size_t idx) { 
-	if(!this->areCamerasUpdated()) { 
-		this->updateCameras(); 
+	if(!vsi.areCamerasUpdated()) { 
+		vsi.updateCameras(); 
 	}
-	return idx < this->vscameras.size() ? &this->vscameras[idx] : nullptr; 
+	return idx < vsi.vscameras.size() ? &vsi.vscameras[idx] : nullptr; 
 }
 VisionServer::VsCamera* VisionServer::getCamera(const std::string& name) {
-	if(!this->areCamerasUpdated()) { 
-		this->updateCameras(); 
+	if(!vsi.areCamerasUpdated()) { 
+		vsi.updateCameras(); 
 	}
-	for(size_t i = 0; i < this->vscameras.size(); i++) {
-		if(this->vscameras[i].getName() == name) {
-			return &this->vscameras[i];
+	for(size_t i = 0; i < vsi.vscameras.size(); i++) {
+		if(vsi.vscameras[i].name == name) {
+			return &vsi.vscameras[i];
 		}
 	}
 	return nullptr;
+}
+int8_t VisionServer::findCameraIdx(const std::string& name) {
+	for(int8_t i = 0; i < vsi.vscameras.size(); i++) {
+		if(vsi.vscameras[i].name == name) {
+			return i;
+		}
+	}
+	return -1;
 }
 VisionServer::VsPipeline* VisionServer::getPipeline(size_t idx) { 
-	if(!this->arePipelinesUpdated()) { 
-		this->updatePipelines(); 
+	if(!vsi.arePipelinesUpdated()) { 
+		vsi.updatePipelines(); 
 	}
-	return idx < this->vspipelines.size() ? &this->vspipelines[idx] : nullptr; 
+	return idx < vsi.vspipelines.size() ? &vsi.vspipelines[idx] : nullptr; 
 }
 VisionServer::VsPipeline* VisionServer::getPipeline(const std::string& name) {
-	if(!this->arePipelinesUpdated()) { 
-		this->updatePipelines(); 
+	if(!vsi.arePipelinesUpdated()) { 
+		vsi.updatePipelines(); 
 	}
-	for(size_t i = 0; i < this->vspipelines.size(); i++) {
-		if(this->vspipelines[i].getName() == name) {
-			return &this->vspipelines[i];
+	for(size_t i = 0; i < vsi.vspipelines.size(); i++) {
+		if(vsi.vspipelines[i].name == name) {
+			return &vsi.vspipelines[i];
 		}
 	}
 	return nullptr;
 }
-VisionServer::VsCamera& VisionServer::getCurrentCamera() { 
-	if(!this->areCamerasUpdated()) { 
-		this->updateCameras(); 
+int8_t VisionServer::findPipelineIdx(const std::string& name) {
+	for(int8_t i = 0; i < vsi.vspipelines.size(); i++) {
+		if(vsi.vspipelines[i].name == name) {
+			return i;
+		}
 	}
-	return *this->getCamera(this->root->GetEntry("Camera Name").GetString("none")); 
+	return -1;
+}
+VisionServer::VsCamera& VisionServer::getCurrentCamera() { 
+	if(!vsi.areCamerasUpdated()) { 
+		vsi.updateCameras(); 
+	}
+	return *vsi.getCamera(vsi.root->GetEntry("Camera Name").GetString("none")); 
 }
 VisionServer::VsPipeline& VisionServer::getCurrentPipeline() { 
-	if(!this->arePipelinesUpdated()) { 
-		this->updatePipelines(); 
+	if(!vsi.arePipelinesUpdated()) { 
+		vsi.updatePipelines(); 
 	}
-	return *this->getPipeline(this->getPipelineIdx()); 
+	return *vsi.getPipeline(vsi.getPipelineIdx()); 
 }
 
-bool VisionServer::getIsPipelineEnabled() const {
-	if(root->ContainsKey("Enable Processing")) {
-		return root->GetEntry("Enable Processing").GetBoolean(true);
+bool VisionServer::applyCameraPreset(CameraPreset p) {
+	bool ret = vsi.vscameras.size() > 0;
+	for(size_t i = 0; i < vsi.vscameras.size(); i++) {
+		ret &= vsi.vscameras[i].applyPreset(p);
+	}
+	return ret;
+}
+
+bool VisionServer::getIsProcessingEnabled() const {
+	if(vsi.root->ContainsKey("Enable Processing")) {
+		return vsi.root->GetEntry("Enable Processing").GetBoolean(true);
 	}
 	return false;
 }
-bool VisionServer::setPipelineEnabled(bool val) {
-	if(root->ContainsKey("Enable Processing")) {
-		return root->GetEntry("Enable Processing").SetBoolean(val);
+bool VisionServer::setProcessingEnabled(bool val) {
+	if(vsi.root->ContainsKey("Enable Processing")) {
+		return vsi.root->GetEntry("Enable Processing").SetBoolean(val);
 	}
 	return false;
 }
-bool VisionServer::togglePipelineEnabled() {
-	if(root->ContainsKey("Enable Processing")) {
-		nt::NetworkTableEntry enbl = root->GetEntry("Enable Processing");
+bool VisionServer::toggleProcessingEnabled() {
+	if(vsi.root->ContainsKey("Enable Processing")) {
+		nt::NetworkTableEntry enbl = vsi.root->GetEntry("Enable Processing");
 		return enbl.SetBoolean(!enbl.GetBoolean(true));
 	}
 	return false;
 }
 
+TargetData* VisionServer::getTargetDataIfMatching(const std::string& target) {
+	if(getActiveTargetName() == target) {
+		return new TargetData(std::move(getTargetData()));
+	}
+	return nullptr;
+}
+
+bool VisionServer::setCamera(const std::string& name) {
+	std::vector<std::string> tables = vsi.cameras->GetSubTables();
+	for(size_t i = 0; i < tables.size(); i++) {
+		if(tables[i] == name) {
+			return setCamera(i);
+		}
+	}
+	return false;
+}
 bool VisionServer::incrementCamera() {
-	int8_t idx = this->getCameraIdx();
-	if(idx + 1 < this->numCameras()) {
-		cam_idx.SetDouble(idx + 1);
+	int8_t idx = vsi.getCameraIdx();
+	if(idx + 1 < vsi.numCameras()) {
+		vsi.cam_idx.SetDouble(idx + 1);
 		return true;
 	}
-	cam_idx.SetDouble(0.f);
+	vsi.cam_idx.SetDouble(0.f);
 	return false;
 }
 bool VisionServer::decrementCamera() {
-	int8_t idx = this->getCameraIdx();
+	int8_t idx = vsi.getCameraIdx();
 	if(idx - 1 >= 0) {
-		cam_idx.SetDouble(idx - 1);
+		vsi.cam_idx.SetDouble(idx - 1);
 		return true;
 	}
-	cam_idx.SetDouble(this->numCameras() - 1);
+	vsi.cam_idx.SetDouble(vsi.numCameras() - 1);
 	return true;
 }
-bool VisionServer::incrementCamera() {
-	int8_t idx = this->getPipelineIdx();
-	if(idx + 1 < this->numPipelines()) {
-		pipe_idx.SetDouble(idx + 1);
-		return true;
+bool VisionServer::setPipeline(const std::string& name) {
+	std::vector<std::string> tables = vsi.pipelines->GetSubTables();
+	for(size_t i = 0; i < tables.size(); i++) {
+		if(tables[i] == name) {
+			return setCamera(i);
+		}
 	}
-	pipe_idx.SetDouble(0.f);
 	return false;
 }
-bool VisionServer::decrementCamera() {
-	int8_t idx = this->getPipelineIdx();
-	if(idx - 1 >= 0) {
-		pipe_idx.SetDouble(idx - 1);
+bool VisionServer::incrementPipeline() {
+	int8_t idx = vsi.getPipelineIdx();
+	if(idx + 1 < vsi.numPipelines()) {
+		vsi.pipe_idx.SetDouble(idx + 1);
 		return true;
 	}
-	pipe_idx.SetDouble(this->numPipelines() - 1);
+	vsi.pipe_idx.SetDouble(0.f);
+	return false;
+}
+bool VisionServer::decrementPipeline() {
+	int8_t idx = vsi.getPipelineIdx();
+	if(idx - 1 >= 0) {
+		vsi.pipe_idx.SetDouble(idx - 1);
+		return true;
+	}
+	vsi.pipe_idx.SetDouble(vsi.numPipelines() - 1);
 	return false;
 }
 
@@ -157,8 +220,7 @@ VisionServer::TargetData::TargetData(const TargetOffset& pos, double d, double u
 	pos(pos), distance(d), ud(ud), lr(lr) {}
 VisionServer::TargetData::TargetData(const std::shared_ptr<nt::NetworkTable>& target) :
 	pos(target), distance(target->GetEntry("distance").GetDouble(0.f)), 
-	ud(target->GetEntry("up-down").GetDouble(0.f)), lr(target->GetEntry("left-right").GetDouble(0.f)) 
-{}
+	ud(target->GetEntry("up-down").GetDouble(0.f)), lr(target->GetEntry("left-right").GetDouble(0.f)) {}
 
 VisionServer::VsCamera::VsCamera(const std::shared_ptr<nt::NetworkTable>& nt) {
 	this->update(nt);

@@ -43,10 +43,13 @@ public final class VisionServer {
 		this.num_pipes = root.getEntry( "Pipelines Available" );
 		this.pipe_idx = root.getEntry( "Pipeline Index" );
 
+		this.root.getEntry("Robot-CoProcessor Connected?").setBoolean(false);
+
 		this.cameras.addSubTableListener(
 			(parent, name, table) -> {
 				updateCameras();
 				this.connected = true;
+				this.root.getEntry("Robot-CoProcessor Connected?").setBoolean(true);
 			}, false
 		);
 		this.pipelines.addSubTableListener(
@@ -174,7 +177,7 @@ public final class VisionServer {
 		setStatistics(!getIsShowingStatistics());
 	}
 
-	public static boolean getIsPipelineEnabled() { 
+	public static boolean getIsProcessingEnabled() { 
 		if(vsi.root.containsKey("Enable Processing")) {
 			return vsi.root.getEntry("Enable Processing").getBoolean(true);
 		}

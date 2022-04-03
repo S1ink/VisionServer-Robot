@@ -4,7 +4,7 @@ import edu.wpi.first.wpilibj2.command.CommandBase;
 //import edu.wpi.first.wpilibj2.command.Subsystem;
 
 
-public class VisionSubsystem {
+public final class VisionSubsystem {
 
 	private static class InstantGlobal extends CommandBase {
 		@Override public boolean isFinished() { return true; }
@@ -17,7 +17,7 @@ public class VisionSubsystem {
 		public static IncrementCamera Get() { return inst; }
 		@Override public void initialize() { 
 			System.out.println("INCREMENT CAMERA");
-			VisionServer.Get().incrementCamera(); 
+			VisionServer.incrementCamera(); 
 		}
 	}
 	public static class DecrementCamera extends InstantGlobal {
@@ -26,7 +26,7 @@ public class VisionSubsystem {
 		public static DecrementCamera Get() { return inst; }
 		@Override public void initialize() { 
 			System.out.println("DECREMENT CAMERA");
-			VisionServer.Get().decrementCamera(); 
+			VisionServer.decrementCamera(); 
 		}
 	}
 	public static class IncrementPipeline extends InstantGlobal {
@@ -35,7 +35,7 @@ public class VisionSubsystem {
 		public static IncrementPipeline Get() { return inst; }
 		@Override public void initialize() { 
 			System.out.println("INCREMENT PIPELINE");
-			VisionServer.Get().incrementPipeline(); }
+			VisionServer.incrementPipeline(); }
 	}
 	public static class DecrementPipeline extends InstantGlobal {
 		private static final DecrementPipeline inst = new DecrementPipeline();
@@ -43,7 +43,7 @@ public class VisionSubsystem {
 		public static DecrementPipeline Get() { return inst; }
 		@Override public void initialize() { 
 			System.out.println("DECREMENT PIPELINE");
-			VisionServer.Get().decrementPipeline(); 
+			VisionServer.decrementPipeline(); 
 		}
 	}
 	public static class ToggleStatistics extends InstantGlobal {
@@ -52,7 +52,7 @@ public class VisionSubsystem {
 		public static ToggleStatistics Get() { return inst; }
 		@Override public void initialize() { 
 			System.out.println("TOGGLE STATISTICS");
-			VisionServer.Get().toggleStatistics(); 
+			VisionServer.toggleStatistics(); 
 		}
 	}
 	public static class ToggleProcessing extends InstantGlobal {
@@ -61,7 +61,7 @@ public class VisionSubsystem {
 		public static ToggleProcessing Get() { return inst; }
 		@Override public void initialize() { 
 			System.out.println("TOGGLE PROCESSING");
-			VisionServer.Get().toggleProcessingEnabled(); 
+			VisionServer.toggleProcessingEnabled(); 
 		}
 	}
 
