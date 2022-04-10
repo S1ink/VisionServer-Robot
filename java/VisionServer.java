@@ -1,4 +1,4 @@
-package frc.robot.modules.vision.java;
+package frc.robot.vision.java;
 
 import java.util.ArrayList;
 

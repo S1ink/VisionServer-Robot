@@ -1,4 +1,4 @@
-package frc.robot.modules.vision.java;
+package frc.robot.vision.java;
 
 import edu.wpi.first.wpilibj2.command.CommandBase;
 //import edu.wpi.first.wpilibj2.command.Subsystem;
