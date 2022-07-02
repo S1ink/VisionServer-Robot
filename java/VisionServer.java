@@ -1,6 +1,7 @@
 package frc.robot.vision.java;
 
 import java.util.ArrayList;
+import java.util.Map;
 
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.NetworkTableEntry;
@@ -11,9 +12,29 @@ public final class VisionServer {
 
 	public static interface Conversion { double convert(double v); }
 
+	public enum Mode {
+		OFFLINE	("Offline"),
+		SINGLE	("Running Singlethreaded"),
+		MULTI	("Running Multithreaded");
 
-	private ArrayList<VsPipeline> vspipelines = new ArrayList<VsPipeline>();
+		public static final Map<String, Mode> lookup = Map.of(
+			Mode.OFFLINE.val, Mode.OFFLINE,
+			Mode.SINGLE.val, Mode.SINGLE,
+			Mode.MULTI.val, Mode.MULTI
+		);
+		public Mode fromString(String s) {
+			return lookup.get(s);
+		}
+
+		public final String val;
+		private Mode(String v) {
+			this.val = v;
+		}
+	}
+
+
 	private ArrayList<VsCamera> vscameras = new ArrayList<VsCamera>();
+	private ArrayList<VsPipeline> vspipelines = new ArrayList<VsPipeline>();
 
 	private boolean connected = false;
 
@@ -21,21 +42,25 @@ public final class VisionServer {
 		root,
 		targets,
 		cameras,
-		pipelines;
+		pipelines,
+		streams
+	;
 	private final NetworkTableEntry
 		active_target,
 		num_cams,
 		cam_idx,
 		num_pipes,
-		pipe_idx;
+		pipe_idx
+	;
 
 
 	private VisionServer() {
 
 		this.root = NetworkTableInstance.getDefault().getTable( "Vision Server" );
-		this.targets = NetworkTableInstance.getDefault().getTable( "Targets" );
+		this.targets = root.getSubTable( "Targets" );
 		this.cameras = root.getSubTable( "Cameras" );
 		this.pipelines = root.getSubTable( "Pipelines" );
+		this.streams = root.getSubTable( "Streams" );
 
 		this.active_target = root.getEntry( "Active Target" );
 		this.num_cams = root.getEntry( "Cameras Available" );
