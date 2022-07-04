@@ -6,28 +6,29 @@ import java.util.Map;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.NetworkTableEntry;
 import edu.wpi.first.networktables.NetworkTable;
+import edu.wpi.first.networktables.NetworkTablesJNI;
 
 
 public final class VisionServer {
 
 	public static interface Conversion { double convert(double v); }
 
-	public enum Mode {
+	public enum VsMode {
 		OFFLINE	("Offline"),
 		SINGLE	("Running Singlethreaded"),
 		MULTI	("Running Multithreaded");
 
-		public static final Map<String, Mode> lookup = Map.of(
-			Mode.OFFLINE.val, Mode.OFFLINE,
-			Mode.SINGLE.val, Mode.SINGLE,
-			Mode.MULTI.val, Mode.MULTI
+		public static final Map<String, VsMode> lookup = Map.of(
+			VsMode.OFFLINE.val, VsMode.OFFLINE,
+			VsMode.SINGLE.val, VsMode.SINGLE,
+			VsMode.MULTI.val, VsMode.MULTI
 		);
-		public Mode fromString(String s) {
+		public static VsMode fromString(String s) {
 			return lookup.get(s);
 		}
 
 		public final String val;
-		private Mode(String v) {
+		private VsMode(String v) {
 			this.val = v;
 		}
 	}
@@ -35,6 +36,8 @@ public final class VisionServer {
 
 	private ArrayList<VsCamera> vscameras = new ArrayList<VsCamera>();
 	private ArrayList<VsPipeline> vspipelines = new ArrayList<VsPipeline>();
+	private ArrayList<VsStream> vsstreams = new ArrayList<VsStream>();
+	private ArrayList<VsTarget> vstargets = new ArrayList<VsTarget>();
 
 	private boolean connected = false;
 
@@ -46,10 +49,10 @@ public final class VisionServer {
 		streams
 	;
 	private final NetworkTableEntry
-		active_target,
 		num_cams,
-		cam_idx,
 		num_pipes,
+
+		cam_idx,
 		pipe_idx
 	;
 
@@ -62,7 +65,6 @@ public final class VisionServer {
 		this.pipelines = root.getSubTable( "Pipelines" );
 		this.streams = root.getSubTable( "Streams" );
 
-		this.active_target = root.getEntry( "Active Target" );
 		this.num_cams = root.getEntry( "Cameras Available" );
 		this.cam_idx = root.getEntry( "Camera Index" );
 		this.num_pipes = root.getEntry( "Pipelines Available" );
@@ -83,6 +85,18 @@ public final class VisionServer {
 				this.connected = true;
 			}, false
 		);
+		this.streams.addSubTableListener(
+			(parent, name, table) -> {
+				updateStreams();
+				this.connected = true;
+			}, false
+		);
+		this.targets.addSubTableListener(
+			(parent, name, table) -> {
+				updateTargets();
+				this.connected = true;
+			}, false
+		);
 
 		System.out.println("VisionServer Initialized.");
 
@@ -95,14 +109,17 @@ public final class VisionServer {
 	public static NetworkTable getRoot() {
 		return vsi.root;
 	}
-	public static NetworkTable getTargetsTable() {
-		return vsi.targets;
-	}
 	public static NetworkTable getCamerasTable() {
 		return vsi.cameras;
 	}
 	public static NetworkTable getPipelinesTable() {
 		return vsi.pipelines;
+	}
+	public static NetworkTable getStreamsTable() {
+		return vsi.streams;
+	}
+	public static NetworkTable getTargetsTable() {
+		return vsi.targets;
 	}
 
 
@@ -112,6 +129,12 @@ public final class VisionServer {
 	}
 	public static boolean arePipelinesUpdated() {
 		return vsi.vspipelines.size() == (int)vsi.num_pipes.getDouble(0.0);
+	}
+	public static boolean areStreamsUpdated() {		// add # of streams entry on server side
+		return vsi.vsstreams.size() == (int)vsi.streams.getSubTables().size();
+	}
+	public static boolean areTargetsUpdated() {
+		return vsi.vstargets.size() == (int)vsi.targets.getSubTables().size();
 	}
 	public static void updateCameras() {
 		vsi.vscameras.clear();
@@ -133,12 +156,33 @@ public final class VisionServer {
 		}
 		System.out.println("Updated Pipelines");
 	}
+	public static void updateStreams() {
+		vsi.vsstreams.clear();
+		for(String subtable : vsi.streams.getSubTables()) {
+			vsi.vsstreams.add(new VsStream(vsi.streams.getSubTable(subtable)));
+		}
+		System.out.println("Updated Streams");
+	}
+	public static void updateTargets() {
+		vsi.vstargets.clear();
+		for(String subtable : vsi.targets.getSubTables()) {
+			vsi.vstargets.add(new VsTarget(vsi.targets.getSubTable(subtable)));
+		}
+		System.out.println("Updated Targets");
+	}
 	public static ArrayList<VsCamera> getCameras() {
 		return vsi.vscameras; 
 	}
 	public static ArrayList<VsPipeline> getPipelines() {
 		return vsi.vspipelines; 
 	}
+	public static ArrayList<VsStream> getStreams() {
+		return vsi.vsstreams;
+	}
+	public static ArrayList<VsTarget> getTargets() {
+		return vsi.vstargets;
+	}
+
 	public static VsCamera getCamera(int idx) {
 		return idx < vsi.vscameras.size() ? idx > 0 ? vsi.vscameras.get(idx) : null : null; 
 	}
@@ -177,6 +221,45 @@ public final class VisionServer {
 		}
 		return -1;
 	}
+	public static VsStream getStream(int n) {
+		return n < vsi.vsstreams.size() ? n >= 0 ? vsi.vsstreams.get(n) : null : null;
+	}
+	public static VsStream getStream(String name) {
+		for(int i = 0; i < vsi.vsstreams.size(); i++) {
+			if(vsi.vsstreams.get(i).name.equals(name)) {
+				return vsi.vsstreams.get(i);
+			}
+		}
+		return null;
+	}
+	public static int findStreamIdx(String name) {
+		for(int i = 0; i < vsi.vsstreams.size(); i++) {
+			if(vsi.vsstreams.get(i).name.equals(name)) {
+				return i;
+			}
+		}
+		return -1;
+	}
+	public static VsTarget getTarget(int n) {
+		return n < vsi.vstargets.size() ? n >= 0 ? vsi.vstargets.get(n) : null : null;
+	}
+	public static VsTarget getTarget(String name) {
+		for(int i = 0; i < vsi.vstargets.size(); i++) {
+			if(vsi.vstargets.get(i).name.equals(name)) {
+				return vsi.vstargets.get(i);
+			}
+		}
+		return null;
+	}
+	public static int findTargetIdx(String name) {
+		for(int i = 0; i < vsi.vstargets.size(); i++) {
+			if(vsi.vstargets.get(i).name.equals(name)) {
+				return i;
+			}
+		}
+		return -1;
+	}
+
 	public static VsCamera getCurrentCamera() {
 		return getCamera(vsi.root.getEntry("Camera Name").getString("none")); 
 	}
@@ -192,67 +275,34 @@ public final class VisionServer {
 		return ret;
 	}
 
-	public static boolean getIsShowingStatistics() {
-		return vsi.root.getEntry("Show Statistics").getBoolean(false);
-	}
-	public static void setStatistics(boolean val) {
-		vsi.root.getEntry("Show Statistics").setBoolean(val);
-	}
-	public static void toggleStatistics() {
-		setStatistics(!getIsShowingStatistics());
+	public VsMode getServerMode() {
+		return VsMode.fromString(root.getEntry("Status").getString("Offline"));
 	}
 
-	public static boolean getIsProcessingEnabled() { 
-		if(vsi.root.containsKey("Enable Processing")) {
-			return vsi.root.getEntry("Enable Processing").getBoolean(true);
-		}
-		return false;
+
+
+	/* * * * * * * * * * * * * * * * * *
+	* SINGLE THREADED MODE OPERATIONS  *	...maybe add container class ->
+	* * * * * * * * * * * * * * * * * */
+
+	public static boolean getProcessingEnabled() {
+		return vsi.root.getEntry("Enable Processing").getBoolean(true);
 	}
 	public static boolean setProcessingEnabled(boolean val) {
-		if(vsi.root.containsKey("Enable Processing")) {
-			return vsi.root.getEntry("Enable Processing").setBoolean(val);
-		}
-		return false;
+		return vsi.root.getEntry("Enable Processing").setBoolean(val);
 	}
 	public static boolean toggleProcessingEnabled() {
-		if(vsi.root.containsKey("Enable Processing")) {
-			return vsi.root.getEntry("Enable Processing").setBoolean(!vsi.root.getEntry("Enable Processing").getBoolean(true));
-		}
-		return false;
+		return vsi.root.getEntry("Enable Processing").setBoolean(!vsi.root.getEntry("Enable Processing").getBoolean(true));
+	}
+	public static int getVerbosity() {
+		return (int)vsi.root.getEntry("Statistics Verbosity").getDouble(-1);
+	}
+	public static boolean setVerbosity(int v) {
+		return vsi.root.getEntry("Statistics Verbosity").setDouble(v);
 	}
 
 	public static boolean isConnected() {
 		return vsi.connected;
-	}
-	public static boolean hasActiveTarget() {
-		return !vsi.active_target.getString("none").equals("none");	// returns "none" on failure
-	}
-	public static NetworkTable getActiveTarget() {
-		return vsi.targets.getSubTable(vsi.active_target.getString("none"));	// returns "none" on failure
-	}
-	public static String getActiveTargetName() {
-		return vsi.active_target.getString("none");	// returns "none" on failure
-	}
-	public static double getDistance() {
-		return getActiveTarget().getEntry("distance").getDouble(0.0);
-	}
-	public static double getThetaUD() {
-		return getActiveTarget().getEntry("up-down").getDouble(0.0);
-	}
-	public static double getThetaLR() {
-		return getActiveTarget().getEntry("left-right").getDouble(0.0);
-	}
-	public static TargetOffset getTargetPos() {
-		return new TargetOffset(getActiveTarget());
-	}
-	public static TargetData getTargetData() {
-		return new TargetData(getActiveTarget());
-	}
-	public static TargetData getTargetDataIfMatching(String target) {	// returns null on mismatch
-		if(getActiveTargetName().equals(target)) {
-			return getTargetData();
-		}
-		return null;
 	}
 
 	public static int numCameras() {
@@ -335,6 +385,43 @@ public final class VisionServer {
 		}
 		vsi.pipe_idx.setDouble(numPipelines() - 1);	// wrap around
 		return false;
+	}
+
+
+
+	public static ArrayList<String> get
+	public static ArrayList<VsPipeline> getPipeInstances(String base) {
+		ArrayList<VsPipeline> ret = new ArrayList<VsPipeline>();
+		for(String table : vsi.targets.getSubTables()) {
+			if(table.contains(base)) {
+				ret.add(new VsPipeline(table));
+			}
+		}
+		return ret;
+	}
+
+	// public static VsTarget[] getTargetInstances(String base) {
+	// 	VsTarget[] ret = {};
+	// 	for(String table : vsi.targets.getSubTables()) {
+	// 		if(table.contains(base)) {
+	// 			VsTarget[] buff = new VsTarget[ret.length + 1];
+	// 			for(int i = 0; i < ret.length; i++) {
+	// 				buff[i] = ret[i];
+	// 			}
+	// 			buff[ret.length] = new VsTarget(table);
+	// 			ret = buff;
+	// 		}
+	// 	}
+	// 	return ret;
+	// }
+	public static ArrayList<VsTarget> getTargetInstances(String base) {
+		ArrayList<VsTarget> ret = new ArrayList<VsTarget>();
+		for(String table : vsi.targets.getSubTables()) {
+			if(table.contains(base)) {
+				ret.add(new VsTarget(table));
+			}
+		}
+		return ret;
 	}
 
 
@@ -499,6 +586,35 @@ public final class VisionServer {
 		public NetworkTable get() {
 			return this.self;
 		}
+		public boolean isEnabled() {
+			return this.self.getEntry("Enable Processing").getBoolean(true);
+		}
+		public int getSourceIdx() {
+			return (int)this.self.getEntry("Source Index").getDouble(0);
+		}
+		public int getVerbosity() {
+			return (int)this.self.getEntry("Statistics Verbosity").getDouble(0);
+		}
+		public boolean setEnabled(boolean e) {
+			return this.self.getEntry("Enable Processing").setBoolean(e);
+		}
+		public boolean setSourceIdx(int i) {
+			return this.self.getEntry("Source Index").setDouble(i);
+		}
+		public boolean setVerbosity(int v) {
+			return this.self.getEntry("Statistics Verbosity").setDouble(v);
+		}
+
+		public boolean setSource(VsCamera c) {
+			return this.setSourceIdx(c.idx + 1);
+		}
+		public boolean setSource(VsPipeline p) {
+			return this.setSourceIdx(-(p.idx + 1));
+		}
+		public Object[] getSource() {	// use "Pair<X,X>" instead
+			int s = this.getSourceIdx();
+			return s > 0 ? new Object[]{vsi.vscameras.get(s - 1), null} : new Object[]{null, vsi.vspipelines.get(-(s - 1))};
+		}
 
 		public void applyProperties(EntryPreset[] properties) {
 			for(EntryPreset preset : properties) {
@@ -584,6 +700,91 @@ public final class VisionServer {
 				}
 			}
 			return this.thresh.setBoolean(val);
+		}
+
+
+	}
+	public static class VsStream {
+
+		private NetworkTable self;
+		private String name;
+
+		public void update(NetworkTable nt) {
+			this.self = nt;
+			this.name = NetworkTable.basenameKey(nt.getPath());
+		}
+		public void update(String tname) {
+			this.self = VisionServer.Get().streams.getSubTable(tname);
+			this.name = tname;
+		}
+		public VsStream(NetworkTable nt) {
+			this.update(nt);
+		}
+		public VsStream(String tname) {
+			this.update(tname);
+		}
+
+		public int getPort() {
+			return (int)this.self.getEntry("Port").getDouble(0);
+		}
+		public int getSourceIdx() {
+			return (int)this.self.getEntry("Source Index").getDouble(0);
+		}
+		public boolean setSourceIdx(int i) {
+			return this.self.getEntry("Source Index").setDouble(i);
+		}
+
+		public boolean setSource(VsCamera c) {
+			return this.setSourceIdx(-(c.idx + 1));
+		}
+		public boolean setSource(VsPipeline p) {
+			return this.setSourceIdx(p.idx + 1);
+		}
+		public Object[] getSource() {	// use "Pair<X,X>" instead
+			int s = this.getSourceIdx();
+			return s > 0 ? new Object[]{vsi.vspipelines.get(s - 1), null} : new Object[]{null, vsi.vscameras.get(-(s - 1))};
+		}
+
+
+	}
+	public static class VsTarget {
+
+		private NetworkTable self;
+		private String name;
+
+		public void update(NetworkTable nt) {
+			this.self = nt;
+			this.name = NetworkTable.basenameKey(nt.getPath());
+		}
+		public void update(String tname) {
+			this.self = VisionServer.Get().targets.getSubTable(tname);
+			this.name = tname;
+		}
+		public VsTarget(NetworkTable nt) {
+			this.update(nt);
+		}
+		public VsTarget(String tname) {
+			this.update(tname);
+		}
+
+		public boolean isUpdated(double ms_thresh) {
+			long n = NetworkTablesJNI.now();	// in us?
+			for(String key : this.self.getKeys()) {
+				if(n - this.self.getEntry(key).getLastChange() < ms_thresh * 1000) {
+					return true;
+				}
+			}
+			return false;
+		}
+		public boolean isUpdated() {
+			return isUpdated(100);
+		}
+
+		public TargetOffset getPosition() {
+			return new TargetOffset(this.self);
+		}
+		public TargetData getTargetInfo() {
+			return new TargetData(this.self);
 		}
 
 

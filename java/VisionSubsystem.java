@@ -46,15 +46,6 @@ public final class VisionSubsystem {
 			VisionServer.decrementPipeline(); 
 		}
 	}
-	public static class ToggleStatistics extends InstantGlobal {
-		private static final ToggleStatistics inst = new ToggleStatistics();
-		private ToggleStatistics() {}
-		public static ToggleStatistics Get() { return inst; }
-		@Override public void initialize() { 
-			System.out.println("TOGGLE STATISTICS");
-			VisionServer.toggleStatistics(); 
-		}
-	}
 	public static class ToggleProcessing extends InstantGlobal {
 		private static final ToggleProcessing inst = new ToggleProcessing();
 		private ToggleProcessing() {}
