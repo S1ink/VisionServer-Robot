@@ -324,6 +324,56 @@ public final class VisionServer {
 			this.whitebalance = wb;
 		}
 
+		public CameraPreset get() { return this; }
+
+
+		public static class NetworkEditable extends CameraPreset {
+
+			private NetworkTable table = null;
+
+			public NetworkEditable(int b, int e, int wb) {
+				super(b, e, wb);
+			}
+			public NetworkEditable(int b, int e, int wb, NetworkTable t) {
+				super(b, e, wb);
+				this.initializeNT(t);
+			}
+			public NetworkEditable(int b, int e, int wb, NetworkTable t, String n) {
+				super(b, e, wb);
+				this.initializeNT(t, n);
+			}
+
+			public void initializeNT(NetworkTable t) {
+				this.table = t;
+				this.resetValues();
+			}
+			public void initializeNT(NetworkTable t, String n) {
+				this.table = t.getSubTable(n);
+				this.resetValues();
+			}
+			public void resetValues() {
+				if(this.table != null) {
+					this.table.getEntry("Brightness").setDouble(this.brightness);
+					this.table.getEntry("Exposure").setDouble(this.exposure);
+					this.table.getEntry("White Balance").setDouble(this.whitebalance);
+				}
+			}
+
+			public CameraPreset getValues() {
+				if(this.table != null) {
+					return new CameraPreset(
+						(int)this.table.getEntry("Brightness").getDouble(0),
+						(int)this.table.getEntry("Exposure").getDouble(0),
+						(int)this.table.getEntry("White Balance").getDouble(0)
+					);
+				}
+				return this;
+			}
+			@Override
+			public CameraPreset get() { return this.getValues(); }
+
+		}
+
 	}
 	public static interface EntryPreset { void setValue(NetworkTable nt); }
 	public static abstract class EntryOption<type> implements EntryPreset {
