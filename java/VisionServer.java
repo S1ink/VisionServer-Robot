@@ -16,12 +16,14 @@ public final class VisionServer {
 	public enum VsMode {
 		OFFLINE	("Offline"),
 		SINGLE	("Running Singlethreaded"),
-		MULTI	("Running Multithreaded");
+		MULTI	("Running Multithreaded"),
+		RAW		("Streaming Raw");
 
 		public static final Map<String, VsMode> lookup = Map.of(
 			VsMode.OFFLINE.val, VsMode.OFFLINE,
 			VsMode.SINGLE.val, VsMode.SINGLE,
-			VsMode.MULTI.val, VsMode.MULTI
+			VsMode.MULTI.val, VsMode.MULTI,
+			VsMode.RAW.val, VsMode.RAW
 		);
 		public static VsMode fromString(String s) {
 			return lookup.get(s);
@@ -389,7 +391,7 @@ public final class VisionServer {
 
 
 
-	public static ArrayList<String> get
+	// public static ArrayList<String> get
 	public static ArrayList<VsPipeline> getPipeInstances(String base) {
 		ArrayList<VsPipeline> ret = new ArrayList<VsPipeline>();
 		for(String table : vsi.targets.getSubTables()) {
